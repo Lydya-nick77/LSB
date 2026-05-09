@@ -6512,9 +6512,9 @@ INSERT INTO `mob_spawn_points` VALUES (16904221,0,'Guard_Hippogryph','Guard Hipp
 INSERT INTO `mob_spawn_points` VALUES (16904223,0,'Watch_Hippogryph','Watch Hippogryph',5,60,60,595.750,-78.254,0,0);
 INSERT INTO `mob_spawn_points` VALUES (16904224,0,'Guard_Hippogryph','Guard Hippogryph',6,55,55,592.576,-78.254,-2.483,244);
 -- Bugard in the Clouds
-INSERT INTO `mob_spawn_points` VALUES (16904226,0,'Hotupuku','Hotupuku',7,50,50,-593.932,81.900,0.009,75);
-INSERT INTO `mob_spawn_points` VALUES (16904228,0,'Hotupuku','Hotupuku',7,50,50,8.718,1.500,-8.058,72);
-INSERT INTO `mob_spawn_points` VALUES (16904230,0,'Hotupuku','Hotupuku',7,50,50,610.142,-78.061,3.980,28);
+INSERT INTO `mob_spawn_points` VALUES (16904226,0,'Hotupuku','Hotupuku',7,50,50,-605,81.699,0,0);
+INSERT INTO `mob_spawn_points` VALUES (16904228,0,'Hotupuku','Hotupuku',7,50,50,-0.4,2.2,-0.8,0);
+INSERT INTO `mob_spawn_points` VALUES (16904230,0,'Hotupuku','Hotupuku',7,50,50,598,-77.8,-1.7,0);
 
 -- Uninvited Guests
 INSERT INTO `mob_spawn_points` VALUES (16904232,0,'Mammet_Master','Mammet Master',8,75,75,-595.000,82.000,0.000,0);

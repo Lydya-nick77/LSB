@@ -35,6 +35,7 @@ zones[xi.zone.MONARCH_LINN] =
         OURYU             = GetFirstID('Ouryu'),
         RAZON             = GetFirstID('Razon'),
         WATCH_HIPPOGRYPH  = GetFirstID('Watch_Hippogryph'),
+        HOTUPUKU          = GetFirstID('Hotupuku'),
     },
     npc =
     {
