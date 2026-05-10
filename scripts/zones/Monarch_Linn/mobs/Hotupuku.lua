@@ -24,9 +24,9 @@ local twoHours =
 
 local immunityMods =
 {
-    xi.mod.UDMGPHYS,
-    xi.mod.UDMGMAGIC,
-    xi.mod.UDMGRANGE,
+    [1] = xi.mod.UDMGPHYS,
+    [2] = xi.mod.UDMGMAGIC,
+    [4] = xi.mod.UDMGRANGE,
 }
 
 local immunityTriggerDamage = 2000
@@ -75,20 +75,54 @@ entity.onMobInitialize = function(mob)
 end
 
 entity.onMobSpawn = function(mob)
-    mob:setLocalVar('immunityMod', immunityMods[math.random(1, #immunityMods)])
-    mob:setLocalVar('twoHourUsed', 0)
-    mob:setLocalVar('nextTwoHourTime', 0)
-    mob:setLocalVar('twoHourBuffStage', 0)
-    mob:setLocalVar('enstoneEnabled', 0)
-    mob:setLocalVar('immunityApplied', 0)
-    mob:setLocalVar('tpChainCount', 0)
-    mob:setLocalVar('tpChainSkill', 0)
-    mob:setLocalVar('tpChainPending', 0)
-    mob:setMod(xi.mod.UDMGPHYS, 0)
+    mob:setLocalVar('immunityMod', 0) -- Will be set to the appropriate UDMG* when immunity is applied
+    mob:setLocalVar('damageTypesUsed', 0) -- Bitfield for phys/magic/ranged
+    mob:setLocalVar('twoHourUsed', 0) -- Set to 1 once Hotupuku has used a 2 hour ability, preventing further procs until the next one is scheduled
+    mob:setLocalVar('nextTwoHourTime', 0) -- Battle time at which Hotupuku can use a 2 hour ability again, set when a 2 hour is used
+    mob:setLocalVar('twoHourBuffStage', 0) -- Tracks which buffs have been applied after using a 2 hour ability. 0 = none, 1 = first stage buffs applied
+    mob:setLocalVar('enstoneEnabled', 0) -- Set to 1 when Hotupuku uses a 2 hour ability, allowing additional earth damage on attacks
+    mob:setLocalVar('immunityApplied', 0) -- Set to 1 once Hotupuku has taken enough damage to trigger an immunity, preventing multiple immunities from being applied
+    mob:setLocalVar('tpChainCount', 0) -- Tracks how many skills have been used in the current TP chain, resets after 2. Should be 0 when no chain is active.
+    mob:setLocalVar('tpChainSkill', 0) -- Set to the skill ID of the first skill used in a TP chain, which is the one that will be used for the entire chain
+    mob:setLocalVar('tpChainPending', 0) -- Set to 1 when a skill that can be chained is used, and the chain isn't already pending. When 1, the mob will use the appropriate chain skill on the next MobFight update, and then reset this to 0.
+    mob:setMod(xi.mod.UDMGPHYS, 0) 
     mob:setMod(xi.mod.UDMGMAGIC, 0)
     mob:setMod(xi.mod.UDMGRANGE, 0)
-    mob:setMod(xi.mod.DEFP, 0)
-    mob:addMod(xi.mod.DEF, 150)
+    mob:setMod(xi.mod.DEFP, 0) 
+    mob:addMod(xi.mod.DEF, 150) 
+    
+    mob:addListener('DAMAGE_TAKEN', 'Hotupuku_DamageTracker', function(mobArg, damage, attacker, attackType, damageType)
+        if mobArg:getLocalVar('immunityApplied') == 0 then
+            local damageMask = 0
+
+            if attackType == xi.attackType.MAGICAL then
+                damageMask = 2
+            elseif attackType == xi.attackType.RANGED then
+                damageMask = 4
+            elseif attackType == xi.attackType.PHYSICAL then
+                -- Some ranged auto-attacks can arrive as PHYSICAL.
+                -- Action category is a more reliable checks.
+                if attacker ~= nil then
+                    local attackerAction = attacker:getCurrentAction()
+
+                    if
+                        attackerAction == xi.action.category.RANGED_START or
+                        attackerAction == xi.action.category.RANGED_FINISH
+                    then
+                        damageMask = 4
+                    else
+                        damageMask = 1
+                    end
+                else
+                    damageMask = 1
+                end
+            end
+
+            if damageMask ~= 0 then
+                mobArg:setLocalVar('damageTypesUsed', bit.bor(mobArg:getLocalVar('damageTypesUsed'), damageMask))
+            end
+        end
+    end)
 end
 
 entity.onAdditionalEffect = function(mob, target, damage)
@@ -109,7 +143,21 @@ entity.onMobFight = function(mob, target)
 
     if mob:getLocalVar('immunityApplied') == 0 and damageTaken >= immunityTriggerDamage then
         mob:setLocalVar('immunityApplied', 1)
-        mob:setMod(mob:getLocalVar('immunityMod'), -10000)
+        mob:removeListener('Hotupuku_DamageTracker')
+
+        local usedTypes = mob:getLocalVar('damageTypesUsed')
+        if usedTypes == 0 then
+            usedTypes = 7
+        end
+
+        local chosenMask = bit.lshift(1, math.random(0, 2))
+        while bit.band(usedTypes, chosenMask) == 0 do
+            chosenMask = bit.lshift(1, math.random(0, 2))
+        end
+
+        local chosenImmunity = immunityMods[chosenMask]
+        mob:setLocalVar('immunityMod', chosenImmunity)
+        mob:setMod(chosenImmunity, -10000)
     end
 
     if
@@ -163,6 +211,7 @@ entity.onMobWeaponSkill = function(mob, target, skill, action)
         return
     end
 
+    -- TP chain x3 logic.
     local tpChainCount = mob:getLocalVar('tpChainCount')
 
     if tpChainCount == 0 then
