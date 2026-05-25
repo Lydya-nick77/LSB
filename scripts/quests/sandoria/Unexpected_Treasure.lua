@@ -127,8 +127,7 @@ quest.sections[3] =
 
     [xi.zone.NORTHERN_SAN_DORIA] =
     {
-        ['Morunaude'] = quest:event(634),
-        ['Calovour']  = quest:event(640),
+        ['Calovour']  = quest:event(640):replaceDefault(),
     },
 }
 
