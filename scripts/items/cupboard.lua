@@ -16,4 +16,8 @@ itemObject.onFurnitureRemoved = function(player)
     player:setCharVar('Quest[0][70]cupboardPlacedTime', 0)
 end
 
+<<<<<<< HEAD
 return itemObject
+=======
+return itemObject
+>>>>>>> 4712dbca5b (Add Unexpected Treasure quest and Cupboard furniture hook)
