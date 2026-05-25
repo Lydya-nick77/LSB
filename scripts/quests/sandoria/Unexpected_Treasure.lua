@@ -65,9 +65,9 @@ quest.sections[2] =
                 local prog = quest:getVar(player, 'Prog')
 
                 if prog == 0 then
-                    return quest:progressEvent(635,0,xi.ki.SMALL_TEACUP,xi.item.CUPBOARD)
+                    return quest:progressEvent(635, 0, xi.ki.SMALL_TEACUP, xi.item.CUPBOARD)
                 else
-                    return quest:progressEvent(636,0,xi.ki.SMALL_TEACUP,xi.item.CUPBOARD)
+                    return quest:progressEvent(636, 0, xi.ki.SMALL_TEACUP, xi.item.CUPBOARD)
                 end
             end,
         },
@@ -79,15 +79,15 @@ quest.sections[2] =
                     quest:getVar(player, 'Prog') == 3 and
                     npcUtil.tradeHasExactly(trade, xi.item.SPRIG_OF_MISTLETOE)
                 then
-                    return quest:progressEvent(639,0,0,0,xi.item.SPRIG_OF_MISTLETOE)
+                    return quest:progressEvent(639, 0, 0, 0, xi.item.SPRIG_OF_MISTLETOE)
                 end
             end,
 
             onTrigger = function(player, npc)
                 if quest:getVar(player, 'Prog') == 2 then
-                    return quest:progressEvent(637,0,0, xi.item.CUPBOARD,xi.item.SPRIG_OF_MISTLETOE)
+                    return quest:progressEvent(637, 0, 0, xi.item.CUPBOARD, xi.item.SPRIG_OF_MISTLETOE)
                 elseif quest:getVar(player, 'Prog') == 3 then
-                    return quest:progressEvent(638,0,0, xi.item.CUPBOARD,xi.item.SPRIG_OF_MISTLETOE)
+                    return quest:progressEvent(638, 0, 0, xi.item.CUPBOARD, xi.item.SPRIG_OF_MISTLETOE)
                 end
             end,
         },
