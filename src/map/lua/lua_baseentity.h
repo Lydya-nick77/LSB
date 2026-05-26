@@ -828,7 +828,6 @@ public:
     auto getActiveManeuverCount() const -> uint8;
     void removeOldestManeuver() const;
     void removeAllManeuvers() const;
-    auto getAttachment(uint8 slotId) const -> const CItem*;
     auto getAttachments() const -> sol::table;
     void setAttachment(uint8 attachmentItemID, uint8 slotID) const;
     void updateAttachments() const;
@@ -863,6 +862,7 @@ public:
     uint32 getMobFlags();
 
     void setNpcFlags(uint32 flags);
+    void setNpcAlwaysRelevant(bool alwaysRelevant);
 
     void spawn(const sol::object& despawnSec, const sol::object& respawnSec);
     bool isSpawned();
@@ -943,8 +943,8 @@ public:
     uint16 getStealItem();
     uint16 getDespoilItem();                // gets ItemID of droplist despoil item from mob (steal item if no despoil item)
     uint16 getDespoilDebuff(uint16 itemID); // gets the status effect id to apply to the mob on successful despoil
-    bool   itemStolen();                    // sets mob's ItemStolen var = true
-    bool   itemDespoiled();                 // sets mob's ItemDespoiled var = true
+    void   itemStolen(bool stolen);         // sets mob's ItemStolen var
+    void   itemDespoiled(bool despoiled);   // sets mob's ItemDespoiled var
     int16  getTHlevel();                    // Returns the Monster's current Treasure Hunter Tier
     void   setTHlevel(int16 newLevel);      // Sets the Monster's current Treasure Hunter Tier
 

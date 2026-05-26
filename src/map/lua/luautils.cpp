@@ -244,6 +244,8 @@ void init(IPP mapIPP, bool isRunningInCI)
     lua.set_function("GarbageCollectFull", &luautils::garbageCollectFull);
     lua.set_function("GetZone", &luautils::GetZone);
     lua.set_function("GetItemByID", &luautils::GetItemByID);
+    lua.set_function("GetItemFlagsByID", &luautils::GetItemFlagsByID);
+    lua.set_function("GetItemLevelRequirementsByID", &luautils::GetItemLevelRequirementsByID);
     lua.set_function("GetNPCByID", &luautils::GetNPCByID);
     lua.set_function("GetMobByID", &luautils::GetMobByID);
     lua.set_function("GetEntityByID", &luautils::GetEntityByID);
@@ -1050,33 +1052,56 @@ void PopulateIDLookups(uint16 zoneId, const std::string& zoneName)
     // Load all Name/ID pairs from mobs and npcs
     std::unordered_map<std::string, std::vector<uint32>> lookup;
 
-    // Mobs
-    {
-        const auto rset = db::preparedStmt("SELECT mobname, mobid FROM mob_spawn_points WHERE ((mobid >> 12) & 0xFFF) = ? ORDER BY mobid ASC", zoneId);
-        if (rset && rset->rowsCount())
-        {
-            while (rset->next())
-            {
-                const auto name = rset->get<std::string>("mobname");
-                const auto id   = rset->get<uint32>("mobid");
+    std::vector<uint16> effectiveZones;
+    effectiveZones.push_back(static_cast<uint16>(zoneId));
 
-                lookup[name].emplace_back(id);
-            }
+    const auto overlayRset = db::preparedStmt("SELECT overlay_id FROM instance_list "
+                                              "WHERE instance_zone = ? AND overlay_id IS NOT NULL AND overlay_id != 0",
+                                              zoneId);
+    FOR_DB_MULTIPLE_RESULTS(overlayRset)
+    {
+        effectiveZones.push_back(overlayRset->get<uint16>("overlay_id"));
+    }
+
+    const auto idRange = [](uint16 effectiveZone) -> std::pair<uint32, uint32>
+    {
+        const uint32 idMin = (static_cast<uint32>(effectiveZone) << 12) | 0x01000000;
+        return { idMin, idMin + 0xFFF };
+    };
+
+    // Mobs
+    for (auto effectiveZone : effectiveZones)
+    {
+        const auto [idMin, idMax] = idRange(effectiveZone);
+        const auto rset           = db::preparedStmt("SELECT mobname, mobid FROM mob_spawn_points "
+                                                     "WHERE mobid BETWEEN ? AND ? "
+                                                     "ORDER BY mobid ASC",
+                                           idMin,
+                                           idMax);
+        FOR_DB_MULTIPLE_RESULTS(rset)
+        {
+            const auto name = rset->get<std::string>("mobname");
+            const auto id   = rset->get<uint32>("mobid");
+
+            lookup[name].emplace_back(id);
         }
     }
 
     // NPCs
+    for (auto effectiveZone : effectiveZones)
     {
-        const auto rset = db::preparedStmt("SELECT name, npcid FROM npc_list WHERE ((npcid >> 12) & 0xFFF) = ? ORDER BY npcid ASC", zoneId);
-        if (rset && rset->rowsCount())
+        const auto [idMin, idMax] = idRange(effectiveZone);
+        const auto rset           = db::preparedStmt("SELECT name, npcid FROM npc_list "
+                                                     "WHERE npcid BETWEEN ? AND ? "
+                                                     "ORDER BY npcid ASC",
+                                           idMin,
+                                           idMax);
+        FOR_DB_MULTIPLE_RESULTS(rset)
         {
-            while (rset->next())
-            {
-                const auto name = rset->get<std::string>("name");
-                const auto id   = rset->get<uint32>("npcid");
+            const auto name = rset->get<std::string>("name");
+            const auto id   = rset->get<uint32>("npcid");
 
-                lookup[name].emplace_back(id);
-            }
+            lookup[name].emplace_back(id);
         }
     }
 
@@ -1264,6 +1289,36 @@ auto GetItemByID(uint32 itemId) -> const CItem*
     TracyZoneScoped;
 
     return xi::items::lookup(itemId);
+}
+
+// GetItemByID currently fails because we can't properly guarantee the constness of `const CItem*`
+// We fetch the template and then intend to return an item, but that's really just not set up to work properly
+// So instead we return non-reference values from the item templates that cannot be modified
+// Remove me when we come up with a better way to fetch item templates in lua
+auto GetItemFlagsByID(uint32 itemId) -> ItemFlag
+{
+    const auto* item = xi::items::lookup(itemId);
+    if (item)
+    {
+        return item->getFlag();
+    }
+
+    return ItemFlag::None;
+}
+
+// GetItemByID currently fails because we can't properly guarantee the constness of `const CItem*`
+// We fetch the template and then intend to return an item, but that's really just not set up to work properly
+// So instead we return non-reference values from the item templates that cannot be modified
+// Remove me when we come up with a better way to fetch item templates in lua
+auto GetItemLevelRequirementsByID(uint32 itemId) -> uint8
+{
+    const auto* item = xi::items::lookup<CItemEquipment>(itemId);
+    if (item)
+    {
+        return item->getReqLvl();
+    }
+
+    return 0;
 }
 
 CBaseEntity* GetNPCByID(uint32 npcid, const sol::object& instanceObj)

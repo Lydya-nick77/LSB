@@ -3611,12 +3611,6 @@ end
 function CBaseEntity:removeAllManeuvers()
 end
 
----@nodiscard
----@param slotId integer
----@return CItem?
-function CBaseEntity:getAttachment(slotId)
-end
-
 ---@param itemId integer
 ---@param slotId integer
 ---@return nil
@@ -3624,7 +3618,7 @@ function CBaseEntity:setAttachment(itemId, slotId)
 end
 
 ---@nodiscard
----@return CItem[]
+---@return table
 function CBaseEntity:getAttachments()
 end
 
@@ -3764,6 +3758,11 @@ end
 ---@param flags integer
 ---@return nil
 function CBaseEntity:setNpcFlags(flags)
+end
+
+---@param alwaysRelevant boolean
+---@return nil
+function CBaseEntity:setNpcAlwaysRelevant(alwaysRelevant)
 end
 
 ---@param despawnSec integer?
@@ -4123,14 +4122,14 @@ end
 function CBaseEntity:getDespoilDebuff(itemID)
 end
 
----@nodiscard
----@return boolean
-function CBaseEntity:itemStolen()
+---@param stolen boolean
+---@return nil
+function CBaseEntity:itemStolen(stolen)
 end
 
----@nodiscard
----@return boolean
-function CBaseEntity:itemDespoiled()
+---@param despoiled boolean
+---@return nil
+function CBaseEntity:itemDespoiled(despoiled)
 end
 
 ---@nodiscard

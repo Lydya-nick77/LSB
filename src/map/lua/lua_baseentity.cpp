@@ -16858,31 +16858,6 @@ void CLuaBaseEntity::removeAllManeuvers() const
 }
 
 /************************************************************************
- *  Function: getAttachment(slotId)
- *  Purpose : Gets the attachment of an automaton in the slot specified
- *  Example : pet:getAttachment(1)
- ************************************************************************/
-
-auto CLuaBaseEntity::getAttachment(const uint8 slotId) const -> const CItem*
-{
-    auto* PAutomaton = dynamic_cast<CAutomatonEntity*>(m_PBaseEntity);
-
-    if (PAutomaton == nullptr)
-    {
-        ShowWarning("Invalid Entity accessing function.");
-        return nullptr;
-    }
-
-    uint8 slotItem = PAutomaton->getAttachment(slotId);
-    if (slotItem != 0)
-    {
-        return xi::items::lookup(0x2100 + slotItem); // TODO: Stop storing by offset
-    }
-
-    return nullptr;
-}
-
-/************************************************************************
  *  Function: setAttachment(attachmentItemID, slotID)
  *  Purpose : Sets the attachment of an automaton in the slot specified
  *  Example : player:setAttachment(8465, 0)
@@ -16926,7 +16901,20 @@ auto CLuaBaseEntity::getAttachments() const -> sol::table
 
         if (attachmentItemId != 0)
         {
-            attachmentTable[attachmentSlot] = CLuaItemPuppet(xi::items::lookup<CItemPuppet>(0x2100 + attachmentItemId));
+            const auto PAttachment = xi::items::lookup<CItemPuppet>(0x2100 + attachmentItemId);
+
+            if (PAttachment)
+            {
+                attachmentTable[attachmentSlot] = PAttachment->getName();
+            }
+            else
+            {
+                attachmentTable[attachmentSlot] = "";
+            }
+        }
+        else
+        {
+            attachmentTable[attachmentSlot] = "";
         }
     }
 
@@ -17634,6 +17622,27 @@ void CLuaBaseEntity::setNpcFlags(uint32 flags)
     {
         PNpc->setEntityFlags(flags);
         PNpc->updatemask |= UPDATE_HP;
+    }
+}
+
+/************************************************************************
+ *  Function: setNpcAlwaysRelevant()
+ *  Purpose : Set NPC such that it is always relevant to players regardless of distance
+ *  Example : npc:setNpcAlwaysRelevant(true)
+ *  Notes   :
+ ************************************************************************/
+void CLuaBaseEntity::setNpcAlwaysRelevant(bool alwaysRelevant)
+{
+    if (m_PBaseEntity->objtype != TYPE_NPC)
+    {
+        return;
+    }
+
+    auto* PNpc = dynamic_cast<CNpcEntity*>(m_PBaseEntity);
+
+    if (PNpc != nullptr)
+    {
+        PNpc->m_alwaysRelevant = alwaysRelevant;
     }
 }
 
@@ -19317,40 +19326,39 @@ uint16 CLuaBaseEntity::getDespoilDebuff(uint16 itemID)
 
 /************************************************************************
  *  Function: itemStolen()
- *  Purpose : Flags a mob's item as stolen, returns true upon update
- *  Example : target:itemStolen()
- *  Notes   : Used in scripts/globals/job_utils/thief.lua
+ *  Purpose : Flags a mob's item as stolen or not
+ *  Example : target:itemStolen(true)
+ *  Notes   : Used in scripts/globals/job_utils/thief.lua and QM NM popping code
  ************************************************************************/
 
-bool CLuaBaseEntity::itemStolen()
+void CLuaBaseEntity::itemStolen(bool stolen)
 {
     if (m_PBaseEntity->objtype != TYPE_MOB)
     {
         ShowWarning("Attempting to flag stolen item for invalid entity type (%s).", m_PBaseEntity->getName());
-        return false;
+        return;
     }
 
-    static_cast<CMobEntity*>(m_PBaseEntity)->m_ItemStolen = true;
-    return true;
+    static_cast<CMobEntity*>(m_PBaseEntity)->m_ItemStolen = stolen;
+    return;
 }
 
 /************************************************************************
  *  Function: itemDespoiled()
- *  Purpose : Flags a mob's item as despoiled, returns true upon update
+ *  Purpose : Flags a mob's item as despoiled or not
  *  Example : target:itemDespoiled()
- *  Notes   : Used in scripts/globals/job_utils/thief.lua
+ *  Notes   : Used in scripts/globals/job_utils/thief.lua and and QM NM popping code
  ************************************************************************/
 
-bool CLuaBaseEntity::itemDespoiled()
+void CLuaBaseEntity::itemDespoiled(bool despoiled)
 {
     if (m_PBaseEntity->objtype != TYPE_MOB)
     {
         ShowWarning("Attempting to flag despoiled item for invalid entity type (%s).", m_PBaseEntity->getName());
-        return false;
+        return;
     }
 
-    static_cast<CMobEntity*>(m_PBaseEntity)->m_ItemDespoiled = true;
-    return true;
+    static_cast<CMobEntity*>(m_PBaseEntity)->m_ItemDespoiled = despoiled;
 }
 
 /************************************************************************
@@ -20689,7 +20697,6 @@ void CLuaBaseEntity::Register()
     SOL_REGISTER("getActiveManeuverCount", CLuaBaseEntity::getActiveManeuverCount);
     SOL_REGISTER("removeOldestManeuver", CLuaBaseEntity::removeOldestManeuver);
     SOL_REGISTER("removeAllManeuvers", CLuaBaseEntity::removeAllManeuvers);
-    SOL_REGISTER("getAttachment", CLuaBaseEntity::getAttachment);
     SOL_REGISTER("setAttachment", CLuaBaseEntity::setAttachment);
     SOL_REGISTER("getAttachments", CLuaBaseEntity::getAttachments);
     SOL_REGISTER("updateAttachments", CLuaBaseEntity::updateAttachments);
@@ -20732,6 +20739,7 @@ void CLuaBaseEntity::Register()
     SOL_REGISTER("setMobFlags", CLuaBaseEntity::setMobFlags);
     SOL_REGISTER("getMobFlags", CLuaBaseEntity::getMobFlags);
     SOL_REGISTER("setNpcFlags", CLuaBaseEntity::setNpcFlags);
+    SOL_REGISTER("setNpcAlwaysRelevant", CLuaBaseEntity::setNpcAlwaysRelevant);
 
     SOL_REGISTER("spawn", CLuaBaseEntity::spawn);
     SOL_REGISTER("isSpawned", CLuaBaseEntity::isSpawned);

@@ -3082,10 +3082,11 @@ INSERT INTO `mob_groups` VALUES (9,4123,57,'Valkeng',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (10,3292,57,'Qultada',0,128,0,1925,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (11,1506,57,'Gessho',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (12,1506,57,'Gessho',0,128,0,2000,0,0,NULL);
--- 13 free
--- 14 free
+INSERT INTO `mob_groups` VALUES (13,7591,57,'Medusa',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (14,7592,57,'Lamia_Exon_BLM',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (15,2071,57,'Imp_Bandsman_Add',0,128,0,1400,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (16,7288,57,'Valkeng',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (17,7593,57,'Lamia_Exon_COR',0,128,0,0,0,0,NULL);
 
 -- ------------------------------------------------------------
 -- Silver_Sea_route_to_Nashmau (Zone 58)
@@ -3151,6 +3152,7 @@ INSERT INTO `mob_groups` VALUES (2021,1294,60,'Faluuya',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (2024,3826,60,'Swiftwinged_Gekko',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (2025,4305,60,'Watch_Imp',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (2026,4348,60,'Windjammer_Imp',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (2027,7498,60,'Flan_Princess',0,128,0,0,0,0,NULL);
 
 -- ------------------------------------------------------------
 -- Mount_Zhayolm (Zone 61)
@@ -3324,6 +3326,9 @@ INSERT INTO `mob_groups` VALUES (5,3582,64,'Shamarhaan',0,128,0,1900,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (6,4123,64,'Valkeng',0,128,0,1300,1300,0,NULL);
 INSERT INTO `mob_groups` VALUES (7,2221,64,'Khimaira_13',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (8,2189,64,'Karababa',0,128,0,1000,1000,1,NULL); -- ally
+INSERT INTO `mob_groups` VALUES (9,7596,64,'Gurfurlur_the_Menacing',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (10,7594,64,'Hilltroll_Elite_Guard',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (11,7595,64,'Woodtroll_Elite_Guard',0,128,0,0,0,0,NULL);
 
 -- ------------------------------------------------------------
 -- Mamook (Zone 65)
@@ -3469,6 +3474,9 @@ INSERT INTO `mob_groups` VALUES (14,6957,67,'Mamool_Ja_Profligate',0,128,0,0,0,0
 INSERT INTO `mob_groups` VALUES (15,6958,67,'Mamool_Ja_Unseen',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (16,6959,67,'Mamool_Ja_Flamerearer',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (17,6960,67,'Scorched-snout_Wyvern',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (18,7597,67,'Gulool_Ja_Ja',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (19,7598,67,'Mamool_Ja_Chamberlain',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (20,7599,67,'Mamool_Ja_Palatine',0,128,0,0,0,0,NULL);
 
 -- ------------------------------------------------------------
 -- Aydeewa_Subterrane (Zone 68)
@@ -12497,6 +12505,17 @@ INSERT INTO `mob_groups` VALUES (5,1158,181,'Ealdnarche',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (6,1270,181,'Exoplates',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (7,4676,181,'Ealdnarche_2',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (8,2993,181,'Orbital',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (9,7589,181,'Ealdnarche_CP',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (10,7590,181,'Orbital_CP',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (11,7580,181,'Kamlanaut_CP',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (12,7581,181,'Ark_Angel_HM_CP',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (13,7582,181,'Ark_Angel_MR_CP',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (14,7583,181,'Ark_Angels_Behemoth_CP',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (15,7584,181,'Ark_Angels_Adamant_CP',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (16,7585,181,'Ark_Angel_EV_CP',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (17,7586,181,'Ark_Angel_TT_CP',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (18,7587,181,'Ark_Angel_GK_CP',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (19,7588,181,'Ark_Angels_Wyvern_CP',0,128,0,0,0,0,NULL);
 
 -- ------------------------------------------------------------
 -- Walk_of_Echoes (Zone 182)
@@ -14392,6 +14411,7 @@ INSERT INTO `mob_groups` VALUES (51,913,254,'Dark_Elemental',0,128,0,0,0,0,NULL)
 -- ------------------------------------------------------------
 
 INSERT INTO `mob_groups` VALUES (1,3604,255,'Shinryu',0,128,2238,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (2,3687,255,'Shinryu_Star',0,128,2238,0,0,0,NULL);
 
 -- ------------------------------------------------------------
 -- Rala_Waterways (Zone 258)
@@ -15544,6 +15564,14 @@ INSERT INTO `mob_groups` VALUES (5,0,277,'Rancibus',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (6,0,277,'Palloritus',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (7,0,277,'Perfidien',0,128,0,0,0,0,NULL);
 INSERT INTO `mob_groups` VALUES (8,0,277,'Plouton',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (9,7607,277,'August_OB',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (10,7600,277,'Bztavian_OB',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (11,7601,277,'Rockfin_OB',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (12,7602,277,'Gabbrath_OB',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (13,7603,277,'Yggdreant_OB',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (14,7604,277,'Waktza_OB',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (15,7605,277,'Cehuetzi_OB',0,128,0,0,0,0,NULL);
+INSERT INTO `mob_groups` VALUES (16,7606,277,'Teodor_OB',0,128,0,0,0,0,NULL);
 
 -- --------------------------------------------------------------
 -- Walk_of_Echoes_[P2] (Zone 279)
