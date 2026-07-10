@@ -21,10 +21,8 @@
 
 #include "0x04d_pbx.h"
 
-#include "entities/charentity.h"
-#include "trade_container.h"
+#include "entities/char_entity.h"
 #include "utils/dboxutils.h"
-#include "utils/jailutils.h"
 #include "utils/zoneutils.h"
 
 auto GP_CLI_COMMAND_PBX::validate(MapSession* PSession, const CCharEntity* PChar) const -> PacketValidationResult

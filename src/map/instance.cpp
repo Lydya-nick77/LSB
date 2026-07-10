@@ -19,12 +19,13 @@
 ===========================================================================
 */
 
+#include <filesystem>
 #include <thread>
 
 #include "instance.h"
 
 #include "ai/ai_container.h"
-#include "entities/charentity.h"
+#include "entities/char_entity.h"
 #include "lua/luautils.h"
 #include "zone.h"
 
@@ -110,10 +111,17 @@ void CInstance::LoadInstance()
 
         // Add to Lua cache
         // TODO: This will happen more often than needed, but not so often that it's a performance concern
-        const auto zone     = m_zone->getName();
-        const auto name     = m_instanceName;
-        const auto filename = fmt::format("./scripts/zones/{}/instances/{}.lua", zone, name);
-        luautils::CacheLuaObjectFromFile(filename);
+        const auto zone        = m_zone->getName();
+        const auto name        = m_instanceName;
+        const auto assaultPath = fmt::format("./scripts/assaults/{}/{}.lua", zone, name);
+        if (std::filesystem::exists(assaultPath))
+        {
+            luautils::LoadLuaObjectFromFile(assaultPath, true);
+        }
+        else
+        {
+            luautils::LoadLuaObjectFromFile(fmt::format("./scripts/zones/{}/instances/{}.lua", zone, name));
+        }
     }
     else
     {

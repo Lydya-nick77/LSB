@@ -25,12 +25,10 @@
 #include "lua/luautils.h"
 
 #include "blue_spell.h"
-#include "items/item_weapon.h"
 #include "mob_spell_list.h"
 #include "spell.h"
 
 #include "enums/four_cc.h"
-#include "map_engine.h"
 #include "status_effect_container.h"
 #include "utils/blueutils.h"
 
@@ -572,7 +570,7 @@ void LoadSpellList()
         }
 
         filename = fmt::format("./scripts/actions/spells/{}/{}.lua", switchKey, PSpell->getName());
-        luautils::CacheLuaObjectFromFile(filename);
+        luautils::LoadLuaObjectFromFile(filename);
     }
 
     rset = db::preparedStmt("SELECT blue_spell_list.spellid, blue_spell_list.mob_skill_id, blue_spell_list.set_points, "
@@ -719,7 +717,7 @@ bool CanUseSpell(CBattleEntity* PCaster, CSpell* spell)
                 usable = true;
                 if (requirements & SPELLREQ_TABULA_RASA)
                 {
-                    if (!PCaster->StatusEffectContainer->HasStatusEffect(EFFECT_TABULA_RASA))
+                    if (!PCaster->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::TabulaRasa))
                     {
                         usable = false;
                     }
@@ -728,14 +726,14 @@ bool CanUseSpell(CBattleEntity* PCaster, CSpell* spell)
                 {
                     if (requirements & SPELLREQ_ADDENDUM_BLACK)
                     {
-                        if (!PCaster->StatusEffectContainer->HasStatusEffect({ EFFECT_ADDENDUM_BLACK, EFFECT_ENLIGHTENMENT }))
+                        if (!PCaster->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::AddendumBlack, xi::StatusEffect::Enlightenment }))
                         {
                             usable = false;
                         }
                     }
                     else if (requirements & SPELLREQ_ADDENDUM_WHITE)
                     {
-                        if (!PCaster->StatusEffectContainer->HasStatusEffect({ EFFECT_ADDENDUM_WHITE, EFFECT_ENLIGHTENMENT }))
+                        if (!PCaster->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::AddendumWhite, xi::StatusEffect::Enlightenment }))
                         {
                             usable = false;
                         }
@@ -745,7 +743,7 @@ bool CanUseSpell(CBattleEntity* PCaster, CSpell* spell)
                 {
                     if (requirements & SPELLREQ_UNBRIDLED_LEARNING)
                     {
-                        if (!PCaster->StatusEffectContainer->HasStatusEffect({ EFFECT_UNBRIDLED_LEARNING, EFFECT_UNBRIDLED_WISDOM }))
+                        if (!PCaster->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::UnbridledLearning, xi::StatusEffect::UnbridledWisdom }))
                         {
                             usable = false;
                         }
@@ -767,7 +765,7 @@ bool CanUseSpell(CBattleEntity* PCaster, CSpell* spell)
                 usable = true;
                 if (requirements & SPELLREQ_TABULA_RASA)
                 {
-                    if (!PCaster->StatusEffectContainer->HasStatusEffect(EFFECT_TABULA_RASA))
+                    if (!PCaster->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::TabulaRasa))
                     {
                         usable = false;
                     }
@@ -776,14 +774,14 @@ bool CanUseSpell(CBattleEntity* PCaster, CSpell* spell)
                 {
                     if (requirements & SPELLREQ_ADDENDUM_BLACK)
                     {
-                        if (!PCaster->StatusEffectContainer->HasStatusEffect({ EFFECT_ADDENDUM_BLACK, EFFECT_ENLIGHTENMENT }))
+                        if (!PCaster->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::AddendumBlack, xi::StatusEffect::Enlightenment }))
                         {
                             usable = false;
                         }
                     }
                     else if (requirements & SPELLREQ_ADDENDUM_WHITE)
                     {
-                        if (!PCaster->StatusEffectContainer->HasStatusEffect({ EFFECT_ADDENDUM_WHITE, EFFECT_ENLIGHTENMENT }))
+                        if (!PCaster->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::AddendumWhite, xi::StatusEffect::Enlightenment }))
                         {
                             usable = false;
                         }
@@ -793,7 +791,7 @@ bool CanUseSpell(CBattleEntity* PCaster, CSpell* spell)
                 {
                     if (requirements & SPELLREQ_UNBRIDLED_LEARNING)
                     {
-                        if (!PCaster->StatusEffectContainer->HasStatusEffect({ EFFECT_UNBRIDLED_LEARNING, EFFECT_UNBRIDLED_WISDOM }))
+                        if (!PCaster->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::UnbridledLearning, xi::StatusEffect::UnbridledWisdom }))
                         {
                             usable = false;
                         }

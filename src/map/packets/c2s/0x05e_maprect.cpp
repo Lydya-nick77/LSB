@@ -24,9 +24,8 @@
 #include <string_view>
 
 #include "common/utils.h"
-#include "entities/charentity.h"
+#include "entities/char_entity.h"
 #include "enums/msg_std.h"
-#include "map/navmesh/navmesh.h"
 #include "packets/s2c/0x053_systemmes.h"
 #include "packets/s2c/0x065_wpos2.h"
 #include "utils/charutils.h"
@@ -46,7 +45,7 @@ const auto denyZone = [](CCharEntity* PChar)
     PChar->pushPacket<GP_SERV_COMMAND_SYSTEMMES>(0, 0, MsgStd::CouldNotEnter);
     PChar->pushPacket<GP_SERV_COMMAND_WPOS2>(PChar, PChar->loc.p, POSMODE::RESET);
 
-    PChar->status = STATUS_TYPE::NORMAL;
+    PChar->status = xi::Status::Normal;
 };
 
 } // namespace
@@ -74,9 +73,9 @@ void GP_CLI_COMMAND_MAPRECT::process(MapSession* PSession, CCharEntity* PChar) c
     const std::string_view mogEntrancePrefix  = rectView.substr(0, 3);
     const auto             isMogHouseEntrance = mogEntrancePrefix == "zmr" || mogEntrancePrefix == "zms"; // zmr* classic cities; zms* WoTG [S] + Adoulin
 
-    if (PChar->status == STATUS_TYPE::NORMAL)
+    if (PChar->status == xi::Status::Normal)
     {
-        PChar->status       = STATUS_TYPE::DISAPPEAR;
+        PChar->status       = xi::Status::Disappear;
         PChar->loc.boundary = 0;
 
         // Exiting Mog House
@@ -138,10 +137,10 @@ void GP_CLI_COMMAND_MAPRECT::process(MapSession* PSession, CCharEntity* PChar) c
             auto destinationRegion            = zoneutils::GetCurrentRegion(destinationZone);
             auto moghouseExitRegions          = { REGION_TYPE::SANDORIA, REGION_TYPE::BASTOK, REGION_TYPE::WINDURST, REGION_TYPE::JEUNO, REGION_TYPE::WEST_AHT_URHGAN, REGION_TYPE::ADOULIN_ISLANDS };
             auto moghouseSameRegion           = std::ranges::any_of(moghouseExitRegions,
-                                                          [&destinationRegion](const REGION_TYPE acceptedReg)
-                                                          {
+                                                                    [&destinationRegion](const REGION_TYPE acceptedReg)
+                                                                    {
                                                               return destinationRegion == acceptedReg;
-                                                          });
+                                                                    });
             auto moghouseQuestComplete        = PChar->profile.mhflag & (this->MyRoomExitBit ? 0x01 << (this->MyRoomExitBit - 1) : 0);
 
             if (startingRegion == REGION_TYPE::ADOULIN_ISLANDS)
@@ -180,14 +179,14 @@ void GP_CLI_COMMAND_MAPRECT::process(MapSession* PSession, CCharEntity* PChar) c
                 }
                 else
                 {
-                    PChar->status = STATUS_TYPE::NORMAL;
+                    PChar->status = xi::Status::Normal;
                     ShowWarning("GP_CLI_COMMAND_MAPRECT: Moghouse 2F requested without it being unlocked: %s", PChar->getName());
                     return;
                 }
             }
             else
             {
-                PChar->status = STATUS_TYPE::NORMAL;
+                PChar->status = xi::Status::Normal;
                 ShowWarning("GP_CLI_COMMAND_MAPRECT: Moghouse zoneline abuse by %s", PChar->getName());
                 return;
             }
@@ -227,6 +226,12 @@ void GP_CLI_COMMAND_MAPRECT::process(MapSession* PSession, CCharEntity* PChar) c
                 {
                     ShowDebug("GP_CLI_COMMAND_MAPRECT: Zone %u closed to chars", PZoneLine->destinationZoneId);
 
+                    denyZone(PChar);
+                    return;
+                }
+
+                if (!isMogHouseEntrance && zoneutils::IsZoneAtPlayerCap(PZoneLine->destinationZoneId, PChar->m_GMlevel > 0))
+                {
                     denyZone(PChar);
                     return;
                 }

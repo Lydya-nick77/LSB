@@ -22,13 +22,14 @@
 #pragma once
 
 #include "common/cbasetypes.h"
-#include "entities/battleentity.h"
+#include "entities/battle_entity.h"
 
 #define CANNOT_USE_SPELL 0
 
 enum class ActionAnimation : uint16_t;
 enum class ActionModifier : uint32_t;
 enum class FourCC : uint32_t;
+
 enum SPELLGROUP
 {
     SPELLGROUP_NONE      = 0,

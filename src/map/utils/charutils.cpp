@@ -20,11 +20,15 @@
 */
 
 #include "common/logging.h"
+
 #include "common/macros.h"
 #include "common/settings.h"
 #include "common/timer.h"
 #include "common/utils.h"
 #include "common/vana_time.h"
+#include <fmt/ranges.h>
+
+#include <common/types/hash_map.h>
 
 #include <array>
 #include <chrono>
@@ -50,6 +54,7 @@
 #include "packets/s2c/0x04f_equip_clear.h"
 #include "packets/s2c/0x050_equip_list.h"
 #include "packets/s2c/0x051_grap_list.h"
+#include "packets/s2c/0x053_systemmes.h"
 #include "packets/s2c/0x055_scenarioitem.h"
 #include "packets/s2c/0x061_clistatus.h"
 #include "packets/s2c/0x062_clistatus2.h"
@@ -82,10 +87,10 @@
 #include "weapon_skill.h"
 #include "zone.h"
 
-#include "entities/automatonentity.h"
-#include "entities/charentity.h"
-#include "entities/mobentity.h"
-#include "entities/petentity.h"
+#include "entities/automaton_entity.h"
+#include "entities/char_entity.h"
+#include "entities/mob_entity.h"
+#include "entities/pet_entity.h"
 
 #include "battleutils.h"
 #include "blueutils.h"
@@ -146,6 +151,7 @@ std::vector<std::pair<uint16, EMobDifficulty>> ExpToDifficultyTable = {};
 */
 
 std::pair<uint16, uint8> IncrediblyEasyPreyCheck = { 1, 56 };
+
 // { EXP value, mob level }
 // { 1, 56 }
 // Must gain more than 1 exp but less than the lowest of ExpToDifficultyTable and greater than or equal to mob level
@@ -983,7 +989,7 @@ auto LoadChar(Scheduler& scheduler, MapConfig config, const uint32 charId) -> st
     luautils::OnZoneIn(PChar);
     luautils::OnGameIn(PChar, zoning == 1);
 
-    PChar->status = STATUS_TYPE::DISAPPEAR;
+    PChar->status = xi::Status::Disappear;
 
     return charEntity;
 }
@@ -997,7 +1003,7 @@ void LoadSpells(CCharEntity* PChar)
 
     // Compile a list of all enabled expansions
     std::vector<std::string> enabledExpansions;
-    for (const auto& expansion : { "COP", "TOAU", "WOTG", "ACP", "AMK", "ASA", "ABYSSEA", "SOA", "ROV", "TVR", "VOIDWATCH" })
+    for (const auto& expansion : { "ROTZ", "COP", "TOAU", "WOTG", "ACP", "AMK", "ASA", "ABYSSEA", "SOA", "ROV", "TVR", "VOIDWATCH" })
     {
         if (luautils::IsContentEnabled(expansion))
         {
@@ -1044,7 +1050,7 @@ void LoadSpells(CCharEntity* PChar)
 
     if (hasTrustPermit)
     {
-        static const std::unordered_map<uint8, uint16> trustSpells = {
+        static const HashMap<uint8, uint16> trustSpells = {
             { 1, 1002 }, // Cornelia
             { 2, 1003 }, // Matsui-P
         }; // This can be expanded if more trust spells are added as settings options.
@@ -2188,12 +2194,6 @@ void UnequipItem(CCharEntity* PChar, uint8 equipSlotID, Recalculate recalculate)
             }
         }
 
-        // Call the LUA event before actually "unequipping" the item so the script can do stuff with it first
-        if (((CItemEquipment*)PItem)->getScriptType() & SCRIPT_EQUIP || ((CItemEquipment*)PItem)->isType(ITEM_USABLE))
-        {
-            luautils::OnItemCheck(PChar, PItem, ITEMCHECK::UNEQUIP, nullptr);
-        }
-
         // todo: issues as item 0 reference is being handled as a real equipment piece
         //      thought to be source of nin bug
         PChar->clearEquip(equipSlotID);
@@ -2253,7 +2253,7 @@ void UnequipItem(CCharEntity* PChar, uint8 equipSlotID, Recalculate recalculate)
                 PChar->look.sub            = 0;
                 PChar->m_Weapons[SLOT_SUB] = xi::items::unarmed(); // << equips "nothing" in the sub slot to prevent multi attack exploit
                 PChar->health.tp           = 0;
-                PChar->StatusEffectContainer->DelStatusEffect(EFFECT_AFTERMATH);
+                PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Aftermath);
                 BuildingCharWeaponSkills(PChar);
                 UpdateWeaponStyle(PChar, equipSlotID, nullptr);
             }
@@ -2278,7 +2278,7 @@ void UnequipItem(CCharEntity* PChar, uint8 equipSlotID, Recalculate recalculate)
                 if (((CItemWeapon*)PItem)->getSkillType() != SKILL_STRING_INSTRUMENT && ((CItemWeapon*)PItem)->getSkillType() != SKILL_WIND_INSTRUMENT)
                 {
                     PChar->health.tp = 0;
-                    PChar->StatusEffectContainer->DelStatusEffect(EFFECT_AFTERMATH);
+                    PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Aftermath);
                 }
                 BuildingCharWeaponSkills(PChar);
                 UpdateWeaponStyle(PChar, equipSlotID, nullptr);
@@ -2316,7 +2316,7 @@ void UnequipItem(CCharEntity* PChar, uint8 equipSlotID, Recalculate recalculate)
                 }
 
                 PChar->health.tp = 0;
-                PChar->StatusEffectContainer->DelStatusEffect(EFFECT_AFTERMATH);
+                PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Aftermath);
                 BuildingCharWeaponSkills(PChar);
                 UpdateWeaponStyle(PChar, equipSlotID, nullptr);
             }
@@ -3374,9 +3374,9 @@ void EquipItem(CCharEntity* PChar, uint8 slotID, uint8 equipSlotID, uint8 contai
             {
                 if (PItem->getScriptType() & SCRIPT_EQUIP)
                 {
-                    luautils::OnItemCheck(PChar, PItem, ITEMCHECK::EQUIP, nullptr);
                     PChar->m_EquipFlag |= PItem->getScriptType();
                 }
+
                 if (PItem->isType(ITEM_USABLE) && ((CItemUsable*)PItem)->getCurrentCharges() != 0)
                 {
                     PItem->setAssignTime(timer::now());
@@ -3387,6 +3387,7 @@ void EquipItem(CCharEntity* PChar, uint8 slotID, uint8 equipSlotID, uint8 contai
 
                     PChar->pushPacket<GP_SERV_COMMAND_ITEM_ATTR>(PItem, static_cast<CONTAINER_ID>(containerID), slotID);
                 }
+
                 PItem->setSubType(ITEM_LOCKED);
 
                 if (equipSlotID == SLOT_SUB)
@@ -3422,7 +3423,7 @@ void EquipItem(CCharEntity* PChar, uint8 slotID, uint8 equipSlotID, uint8 contai
         {
             // If the weapon ISN'T a wind based instrument or a string based instrument
             PChar->health.tp = 0;
-            PChar->StatusEffectContainer->DelStatusEffect(EFFECT_AFTERMATH);
+            PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Aftermath);
         }
 
         if (!PChar->getEquip(SLOT_MAIN) || !PChar->getEquip(SLOT_MAIN)->isType(ITEM_EQUIPMENT) ||
@@ -3510,37 +3511,6 @@ void RemoveAllEquipment(CCharEntity* PChar)
 
     BuildingCharWeaponSkills(PChar);
     PChar->RequestPersist(CHAR_PERSIST::EQUIP);
-}
-
-/************************************************************************
- *                                                                       *
- *  Check the logic of all character equipment                           *
- *                                                                       *
- ************************************************************************/
-
-// Later will need to make equipment in the structure,
-// where to add a bit field indicating in which cell is the equipment with the condition
-// To begin with, this field will save us from checking cells in characters without equipment with the condition
-
-void CheckEquipLogic(CCharEntity* PChar, SCRIPTTYPE ScriptType, uint32 param)
-{
-    if (!(PChar->m_EquipFlag & ScriptType))
-    {
-        return;
-    }
-
-    for (uint8 slotID = 0; slotID < 16; ++slotID)
-    {
-        CItem* PItem = PChar->getEquip((SLOTTYPE)slotID);
-
-        if ((PItem != nullptr) && PItem->isType(ITEM_EQUIPMENT))
-        {
-            if (((CItemEquipment*)PItem)->getScriptType() & ScriptType)
-            {
-                luautils::OnItemCheck(PChar, PItem, static_cast<ITEMCHECK>(param), nullptr);
-            }
-        }
-    }
 }
 
 /************************************************************************
@@ -3774,9 +3744,9 @@ void BuildingCharAbilityTable(CCharEntity* PChar)
 bool isArtsBonusActive(CCharEntity* PChar, SKILLTYPE SkillID)
 {
     return (SkillID >= SKILL_DIVINE_MAGIC && SkillID <= SKILL_ENFEEBLING_MAGIC &&
-            PChar->StatusEffectContainer->HasStatusEffect({ EFFECT_LIGHT_ARTS, EFFECT_ADDENDUM_WHITE })) ||
+            PChar->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::LightArts, xi::StatusEffect::AddendumWhite })) ||
            (SkillID >= SKILL_ENFEEBLING_MAGIC && SkillID <= SKILL_DARK_MAGIC &&
-            PChar->StatusEffectContainer->HasStatusEffect({ EFFECT_DARK_ARTS, EFFECT_ADDENDUM_BLACK }));
+            PChar->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::DarkArts, xi::StatusEffect::AddendumBlack }));
 }
 
 // calculates the bonus skill based on active sch arts
@@ -3834,7 +3804,7 @@ int16 ArtsBonusSkill(CCharEntity* PChar, SKILLTYPE SkillID)
         skillBonus += std::max(artsSkill - currentSkill, 0);
     }
 
-    if (PChar->StatusEffectContainer->HasStatusEffect({ EFFECT_LIGHT_ARTS, EFFECT_ADDENDUM_WHITE }))
+    if (PChar->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::LightArts, xi::StatusEffect::AddendumWhite }))
     {
         skillBonus += PChar->getMod(Mod::LIGHT_ARTS_SKILL);
     }
@@ -4709,6 +4679,7 @@ void SetExpDifficultyCurve(std::vector<std::pair<uint16, EMobDifficulty>>& curve
     ExpToDifficultyTable    = curve;
     IncrediblyEasyPreyCheck = incrediblyEasyPreyData;
 }
+
 /************************************************************************
  *                                                                       *
  *  Return mob difficulty according to level difference                  *
@@ -4782,6 +4753,26 @@ uint32 GetExpNEXTLevel(uint8 charlvl)
         return g_ExpPerLevel[charlvl];
     }
     return 0;
+}
+
+/************************************************************************
+ *                                                                       *
+ *  Level used to calculate EXP.                                         *
+ *                                                                       *
+ ************************************************************************/
+
+uint8 GetExpLevel(CBattleEntity* PMember)
+{
+    if (auto* PChar = dynamic_cast<CCharEntity*>(PMember))
+    {
+        CStatusEffect* PRestriction = PChar->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::LevelRestriction);
+        if (PRestriction && PRestriction->GetSubPower() == 1) // subPower 1 means EXP rate based on the player's true level
+        {
+            return PChar->jobs.job[PChar->GetMJob()];
+        }
+    }
+
+    return PMember->GetMLevel();
 }
 
 /************************************************************************
@@ -4951,7 +4942,7 @@ void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob)
 
     uint8       pcinzone = 0;
     uint8       minlevel = 0;
-    uint8       maxlevel = PChar->GetMLevel();
+    uint8       maxlevel = GetExpLevel(PChar);
     REGION_TYPE region   = PChar->loc.zone->GetRegionID();
 
     if (PChar->PParty)
@@ -4987,13 +4978,14 @@ void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob)
                 {
                     maxlevel = PMember->PPet->GetMLevel();
                 }
-                if (PMember->GetMLevel() > maxlevel)
+                const uint8 memberExpLevel = GetExpLevel(PMember);
+                if (memberExpLevel > maxlevel)
                 {
-                    maxlevel = PMember->GetMLevel();
+                    maxlevel = memberExpLevel;
                 }
-                else if (PMember->GetMLevel() < minlevel)
+                else if (memberExpLevel < minlevel)
                 {
-                    minlevel = PMember->GetMLevel();
+                    minlevel = memberExpLevel;
                 }
                 pcinzone++;
             }
@@ -5017,7 +5009,7 @@ void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob)
             bool chainactive = false;
 
             const int16 moblevel    = PMob->GetMLevel() + PMob->getMod(Mod::EXP_LVL_MOD);
-            const uint8 memberlevel = PMember->GetMLevel();
+            const uint8 memberlevel = GetExpLevel(PMember);
 
             EMobDifficulty mobCheck = CheckMob(maxlevel, PMob);
             float          exp      = static_cast<float>(GetBaseExp(maxlevel, moblevel));
@@ -5045,12 +5037,12 @@ void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob)
                     }
 
                     bool isInSignetZone =
-                        PMember->StatusEffectContainer->HasStatusEffect(EFFECT_SIGNET) &&
+                        PMember->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Signet) &&
                         region >= REGION_TYPE::RONFAURE &&
                         region <= REGION_TYPE::JEUNO;
 
                     bool isInSanctionZone =
-                        PMember->StatusEffectContainer->HasStatusEffect(EFFECT_SANCTION) &&
+                        PMember->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Sanction) &&
                         region >= REGION_TYPE::WEST_AHT_URHGAN &&
                         region <= REGION_TYPE::ALZADAAL;
 
@@ -5063,11 +5055,11 @@ void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob)
                     }
 
                     // Per monster caps pulled from: https://ffxiclopedia.fandom.com/wiki/Experience_Points
-                    if (PMember->GetMLevel() <= 50)
+                    if (memberlevel <= 50)
                     {
                         exp = std::fmin(exp, 400.0f);
                     }
-                    else if (PMember->GetMLevel() <= 60)
+                    else if (memberlevel <= 60)
                     {
                         exp = std::fmin(exp, 500.0f);
                     }
@@ -5108,27 +5100,27 @@ void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob)
                         }
                         else
                         {
-                            if (PMember->GetMLevel() <= 10)
+                            if (memberlevel <= 10)
                             {
                                 PMember->expChain.chainTime = timer::now() + 50s;
                             }
-                            else if (PMember->GetMLevel() <= 20)
+                            else if (memberlevel <= 20)
                             {
                                 PMember->expChain.chainTime = timer::now() + 100s;
                             }
-                            else if (PMember->GetMLevel() <= 30)
+                            else if (memberlevel <= 30)
                             {
                                 PMember->expChain.chainTime = timer::now() + 150s;
                             }
-                            else if (PMember->GetMLevel() <= 40)
+                            else if (memberlevel <= 40)
                             {
                                 PMember->expChain.chainTime = timer::now() + 200s;
                             }
-                            else if (PMember->GetMLevel() <= 50)
+                            else if (memberlevel <= 50)
                             {
                                 PMember->expChain.chainTime = timer::now() + 250s;
                             }
-                            else if (PMember->GetMLevel() <= 60)
+                            else if (memberlevel <= 60)
                             {
                                 PMember->expChain.chainTime = timer::now() + 300s;
                             }
@@ -5139,7 +5131,7 @@ void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob)
                             PMember->expChain.chainNumber = 1;
                         }
 
-                        if (chainactive && PMember->GetMLevel() <= 10)
+                        if (chainactive && memberlevel <= 10)
                         {
                             switch (PMember->expChain.chainNumber)
                             {
@@ -5166,7 +5158,7 @@ void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob)
                                     break;
                             }
                         }
-                        else if (chainactive && PMember->GetMLevel() <= 20)
+                        else if (chainactive && memberlevel <= 20)
                         {
                             switch (PMember->expChain.chainNumber)
                             {
@@ -5193,7 +5185,7 @@ void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob)
                                     break;
                             }
                         }
-                        else if (chainactive && PMember->GetMLevel() <= 30)
+                        else if (chainactive && memberlevel <= 30)
                         {
                             switch (PMember->expChain.chainNumber)
                             {
@@ -5220,7 +5212,7 @@ void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob)
                                     break;
                             }
                         }
-                        else if (chainactive && PMember->GetMLevel() <= 40)
+                        else if (chainactive && memberlevel <= 40)
                         {
                             switch (PMember->expChain.chainNumber)
                             {
@@ -5247,7 +5239,7 @@ void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob)
                                     break;
                             }
                         }
-                        else if (chainactive && PMember->GetMLevel() <= 50)
+                        else if (chainactive && memberlevel <= 50)
                         {
                             switch (PMember->expChain.chainNumber)
                             {
@@ -5274,7 +5266,7 @@ void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob)
                                     break;
                             }
                         }
-                        else if (chainactive && PMember->GetMLevel() <= 60)
+                        else if (chainactive && memberlevel <= 60)
                         {
                             switch (PMember->expChain.chainNumber)
                             {
@@ -5432,9 +5424,9 @@ uint16 AddCapacityBonus(CCharEntity* PChar, uint16 capacityPoints)
 
     // COMMITMENT from Capacity Bands
 
-    if (PChar->StatusEffectContainer->GetStatusEffect(EFFECT_COMMITMENT) && PChar->loc.zone->GetRegionID() != REGION_TYPE::ABYSSEA)
+    if (PChar->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::Commitment) && PChar->loc.zone->GetRegionID() != REGION_TYPE::ABYSSEA)
     {
-        CStatusEffect* commitment = PChar->StatusEffectContainer->GetStatusEffect(EFFECT_COMMITMENT);
+        CStatusEffect* commitment = PChar->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::Commitment);
         int16          percentage = commitment->GetPower();
         int16          cap        = commitment->GetSubPower();
         rawBonus += std::clamp<int32>(((capacityPoints * percentage) / 100), 0, cap);
@@ -5442,7 +5434,7 @@ uint16 AddCapacityBonus(CCharEntity* PChar, uint16 capacityPoints)
 
         if (cap <= 0)
         {
-            PChar->StatusEffectContainer->DelStatusEffect(EFFECT_COMMITMENT);
+            PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Commitment);
         }
     }
 
@@ -5749,14 +5741,14 @@ void AddExperiencePoints(bool expFromRaise, bool awardRegionPoints, bool fromScr
         REGION_TYPE region = PChar->loc.zone->GetRegionID();
 
         // Should this user be awarded conquest points..
-        if (PChar->StatusEffectContainer->HasStatusEffect(EFFECT_SIGNET) && (region >= REGION_TYPE::RONFAURE && region <= REGION_TYPE::JEUNO))
+        if (PChar->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Signet) && (region >= REGION_TYPE::RONFAURE && region <= REGION_TYPE::JEUNO))
         {
             // Add influence for the players region..
             conquest::AddConquestPoints(PChar, exp);
         }
 
         // Should this user be awarded imperial standing..
-        if (PChar->StatusEffectContainer->HasStatusEffect(EFFECT_SANCTION) && (region >= REGION_TYPE::WEST_AHT_URHGAN && region <= REGION_TYPE::ALZADAAL))
+        if (PChar->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Sanction) && (region >= REGION_TYPE::WEST_AHT_URHGAN && region <= REGION_TYPE::ALZADAAL))
         {
             charutils::AddPoints(PChar, "imperial_standing", (int32)(exp * 0.1f));
             PChar->pushPacket<GP_SERV_COMMAND_CONQUEST>(PChar);
@@ -5898,7 +5890,7 @@ void SaveCharPosition(CCharEntity* PChar)
 {
     TracyZoneScoped;
 
-    if (PChar->status == STATUS_TYPE::DISAPPEAR)
+    if (PChar->status == xi::Status::Disappear)
     {
         return;
     }
@@ -6771,9 +6763,9 @@ float AddExpBonus(CCharEntity* PChar, float exp)
     TracyZoneScoped;
 
     int32 bonus = 0;
-    if (PChar->StatusEffectContainer->GetStatusEffect(EFFECT_DEDICATION) && PChar->loc.zone->GetRegionID() != REGION_TYPE::ABYSSEA)
+    if (PChar->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::Dedication) && PChar->loc.zone->GetRegionID() != REGION_TYPE::ABYSSEA)
     {
-        CStatusEffect* dedication = PChar->StatusEffectContainer->GetStatusEffect(EFFECT_DEDICATION);
+        CStatusEffect* dedication = PChar->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::Dedication);
         int16          percentage = dedication->GetPower();
         int16          cap        = dedication->GetSubPower();
         bonus += std::clamp<int32>((int32)((exp * percentage) / 100), 0, cap);
@@ -6781,7 +6773,7 @@ float AddExpBonus(CCharEntity* PChar, float exp)
 
         if (cap <= 0)
         {
-            PChar->StatusEffectContainer->DelStatusEffect(EFFECT_DEDICATION);
+            PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Dedication);
         }
     }
 
@@ -6929,7 +6921,7 @@ auto CheckAbilityAddtype(CCharEntity* PChar, const CAbility* PAbility) -> bool
     }
     if (PAbility->getAddType() & ADDTYPE_ASTRAL_FLOW)
     {
-        if (!PChar->StatusEffectContainer->HasStatusEffect(EFFECT_ASTRAL_FLOW))
+        if (!PChar->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::AstralFlow))
         {
             return false;
         }
@@ -6943,14 +6935,14 @@ auto CheckAbilityAddtype(CCharEntity* PChar, const CAbility* PAbility) -> bool
     }
     if (PAbility->getAddType() & ADDTYPE_LIGHT_ARTS)
     {
-        if (!PChar->StatusEffectContainer->HasStatusEffect({ EFFECT_LIGHT_ARTS, EFFECT_ADDENDUM_WHITE }))
+        if (!PChar->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::LightArts, xi::StatusEffect::AddendumWhite }))
         {
             return false;
         }
     }
     if (PAbility->getAddType() & ADDTYPE_DARK_ARTS)
     {
-        if (!PChar->StatusEffectContainer->HasStatusEffect({ EFFECT_DARK_ARTS, EFFECT_ADDENDUM_BLACK }))
+        if (!PChar->StatusEffectContainer->HasStatusEffect({ xi::StatusEffect::DarkArts, xi::StatusEffect::AddendumBlack }))
         {
             return false;
         }
@@ -6986,7 +6978,7 @@ auto CheckAbilityAddtype(CCharEntity* PChar, const CAbility* PAbility) -> bool
 
         // Alexander, Odin and Atomos grant no abilities (Assault, Release...) to the master.
         const auto* petEntity = static_cast<CPetEntity*>(PChar->PPet);
-        if (petEntity->m_PetID == PETID_ALEXANDER || petEntity->m_PetID == PETID_ODIN || petEntity->m_PetID == PETID_ATOMOS)
+        if (petEntity->petID() == PETID_ALEXANDER || petEntity->petID() == PETID_ODIN || petEntity->petID() == PETID_ATOMOS)
         {
             return false;
         }
@@ -7005,7 +6997,7 @@ void RemoveInvisible(const CCharEntity* PChar)
 {
     if (PChar && PChar->StatusEffectContainer)
     {
-        PChar->StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_INVISIBLE);
+        PChar->StatusEffectContainer->DelStatusEffectsByFlag(xi::StatusEffectFlag::Invisible);
     }
 }
 
@@ -7014,31 +7006,31 @@ void RemoveStratagems(CCharEntity* PChar, CSpell* PSpell)
     if (PSpell->getSpellGroup() == SPELLGROUP_WHITE)
     {
         // rapture to be deleted in applicable scripts
-        PChar->StatusEffectContainer->DelStatusEffect(EFFECT_PENURY);
-        PChar->StatusEffectContainer->DelStatusEffect(EFFECT_CELERITY);
-        PChar->StatusEffectContainer->DelStatusEffect(EFFECT_ENLIGHTENMENT);
-        PChar->StatusEffectContainer->DelStatusEffect(EFFECT_ALTRUISM);
-        PChar->StatusEffectContainer->DelStatusEffect(EFFECT_TRANQUILITY);
+        PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Penury);
+        PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Celerity);
+        PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Enlightenment);
+        PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Altruism);
+        PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Tranquility);
         if (PSpell->getAOE() == SPELLAOE_RADIAL_ACCE)
         {
-            PChar->StatusEffectContainer->DelStatusEffect(EFFECT_ACCESSION);
+            PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Accession);
         }
         if (PSpell->getSkillType() == SKILL_ENHANCING_MAGIC)
         {
-            PChar->StatusEffectContainer->DelStatusEffect(EFFECT_PERPETUANCE);
+            PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Perpetuance);
         }
     }
     else if (PSpell->getSpellGroup() == SPELLGROUP_BLACK)
     {
         // ebullience to be deleted in applicable scripts
-        PChar->StatusEffectContainer->DelStatusEffect(EFFECT_PARSIMONY);
-        PChar->StatusEffectContainer->DelStatusEffect(EFFECT_ALACRITY);
-        PChar->StatusEffectContainer->DelStatusEffect(EFFECT_ENLIGHTENMENT);
-        PChar->StatusEffectContainer->DelStatusEffect(EFFECT_FOCALIZATION);
-        PChar->StatusEffectContainer->DelStatusEffect(EFFECT_EQUANIMITY);
+        PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Parsimony);
+        PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Alacrity);
+        PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Enlightenment);
+        PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Focalization);
+        PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Equanimity);
         if (PSpell->getAOE() == SPELLAOE_RADIAL_MANI)
         {
-            PChar->StatusEffectContainer->DelStatusEffect(EFFECT_MANIFESTATION);
+            PChar->StatusEffectContainer->DelStatusEffect(xi::StatusEffect::Manifestation);
         }
     }
 }
@@ -7139,13 +7131,13 @@ void ReloadParty(CCharEntity* PChar)
         }
 
         CBattleEntity* PSyncTarget = PChar->PParty->GetSyncTarget();
-        if (PSyncTarget && PChar->getZone() == PSyncTarget->getZone() && !(PChar->StatusEffectContainer->HasStatusEffect(EFFECT_LEVEL_SYNC)) &&
-            PSyncTarget->StatusEffectContainer->HasStatusEffect(EFFECT_LEVEL_SYNC) &&
-            PSyncTarget->StatusEffectContainer->GetStatusEffect(EFFECT_LEVEL_SYNC)->GetDuration() == 0s)
+        if (PSyncTarget && PChar->getZone() == PSyncTarget->getZone() && !(PChar->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::LevelSync)) &&
+            PSyncTarget->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::LevelSync) &&
+            PSyncTarget->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::LevelSync)->GetDuration() == 0s)
         {
             PChar->pushPacket<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PChar, 0, PSyncTarget->GetMLevel(), MsgBasic::LevelSyncActivated);
-            PChar->StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_DISPELABLE);
-            PChar->StatusEffectContainer->AddStatusEffect(new CStatusEffect(EFFECT_LEVEL_SYNC, EFFECT_LEVEL_SYNC, PSyncTarget->GetMLevel(), 0s, 0s), EffectNotice::Silent);
+            PChar->StatusEffectContainer->DelStatusEffectsByFlag(xi::StatusEffectFlag::Dispelable);
+            PChar->StatusEffectContainer->AddStatusEffectSilent(xi::StatusEffect::LevelSync, static_cast<uint16>(xi::StatusEffect::LevelSync), PSyncTarget->GetMLevel(), 0s, 0s);
         }
 
         if (allianceid != 0)
@@ -7241,7 +7233,9 @@ void AddPoints(CCharEntity* PChar, const char* type, int32 amount, int32 max)
     TracyZoneScoped;
 
     const auto currentPointsValue = GetPoints(PChar, type);
-    const auto newPointsValue     = std::clamp(currentPointsValue + amount, 0, max);
+    // 64-bit sum so amount can't overflow, and max is sanitized: callers (including Lua's
+    // addCurrency) can pass a non-positive cap, which would otherwise invert the clamp bounds.
+    const auto newPointsValue = static_cast<int32>(std::clamp<int64>(static_cast<int64>(currentPointsValue) + amount, 0, std::max(max, 0)));
     SetPoints(PChar, type, newPointsValue);
 
     if (strcmp(type, "unity_accolades") == 0 && amount > 0)
@@ -7340,30 +7334,27 @@ std::string GetConquestPointsName(CCharEntity* PChar)
     }
 }
 
-void SendToZone(CCharEntity* PChar, uint16 zoneId)
+auto SendToZone(CCharEntity* PChar, uint16 zoneId) -> bool
 {
     TracyZoneScoped;
 
     if (PChar->PSession->blowfish.status == BLOWFISH_PENDING_ZONE)
     {
-        return;
+        return false;
     }
 
     auto ipp = IPP(zoneutils::GetZoneIPP(zoneId));
     if (ipp.getIP() == 0)
     {
         ShowErrorFmt("charutils::SendToZone : Invalid zoneId {}", zoneId);
-        return;
+        return false;
     }
 
-    auto ip   = ipp.getIP();
-    auto port = ipp.getPort();
-    db::preparedStmt("UPDATE accounts_sessions "
-                     "SET server_addr = ?, server_port = ? "
-                     "WHERE charid = ?",
-                     ip,
-                     port,
-                     PChar->id);
+    if (zoneutils::IsZoneAtPlayerCap(zoneId, PChar->m_GMlevel > 0))
+    {
+        ShowInfoFmt("charutils::SendToZone : zone {} at player cap, denying {} (gm={})", zoneId, PChar->name, PChar->m_GMlevel);
+        return false;
+    }
 
     db::preparedStmt("UPDATE chars "
                      "SET pos_zone = ?, pos_prevzone = ?, pos_rot = ?,"
@@ -7401,13 +7392,15 @@ void SendToZone(CCharEntity* PChar, uint16 zoneId)
     PChar->PSession->zone_ipp = {};
     PChar->pushPacket<GP_SERV_COMMAND_LOGOUT>(GP_GAME_LOGOUT_STATE::ZONECHANGE, IPP(ipp));
 
-    PChar->status = STATUS_TYPE::DISAPPEAR;
+    PChar->status = xi::Status::Disappear;
 
     // Save pet if any
     if (PChar->shouldPetPersistThroughZoning())
     {
         PChar->setPetZoningInfo();
     }
+
+    return true;
 }
 
 void SendDisconnect(CCharEntity* PChar)
@@ -7418,7 +7411,7 @@ void SendDisconnect(CCharEntity* PChar)
     PChar->clearPacketList();
 
     PChar->loc.destination     = 0xFFFF;
-    PChar->status              = STATUS_TYPE::SHUTDOWN;
+    PChar->status              = xi::Status::Shutdown;
     PChar->requestedZoneChange = true;
 
     // Save pet if any
@@ -7439,7 +7432,7 @@ void ForceLogout(CCharEntity* PChar)
 void ForceRezone(CCharEntity* PChar)
 {
     PChar->loc.destination = PChar->getZone();
-    PChar->status          = STATUS_TYPE::DISAPPEAR;
+    PChar->status          = xi::Status::Disappear;
     PChar->loc.boundary    = 0;
 
     PChar->clearPacketList();
@@ -7453,16 +7446,23 @@ void ForceRezone(CCharEntity* PChar)
     }
 }
 
-void HomePoint(CCharEntity* PChar, bool resetHPMP)
+auto HomePoint(CCharEntity* PChar, bool resetHPMP) -> bool
 {
     TracyZoneScoped;
+
+    if (zoneutils::IsZoneAtPlayerCap(PChar->profile.home_point.destination, PChar->m_GMlevel > 0))
+    {
+        PChar->pushPacket<GP_SERV_COMMAND_SYSTEMMES>(0, 0, MsgStd::CouldNotEnter);
+        PChar->requestedWarp = false;
+        return false;
+    }
 
     // player initiated warp/warp 2 or otherwise
     if (resetHPMP)
     {
         // remove weakness on homepoint
-        PChar->StatusEffectContainer->DelStatusEffectSilent(EFFECT_WEAKNESS);
-        PChar->StatusEffectContainer->DelStatusEffectSilent(EFFECT_LEVEL_SYNC);
+        PChar->StatusEffectContainer->DelStatusEffectSilent(xi::StatusEffect::Weakness);
+        PChar->StatusEffectContainer->DelStatusEffectSilent(xi::StatusEffect::LevelSync);
 
         PChar->SetDeathTime(timer::time_point::min());
 
@@ -7474,12 +7474,12 @@ void HomePoint(CCharEntity* PChar, bool resetHPMP)
     PChar->loc.p           = PChar->profile.home_point.p;
     PChar->loc.destination = PChar->profile.home_point.destination;
 
-    PChar->status    = STATUS_TYPE::DISAPPEAR;
+    PChar->status    = xi::Status::Disappear;
     PChar->animation = ANIMATION_NONE;
     PChar->updatemask |= UPDATE_HP;
 
     PChar->clearPacketList();
-    SendToZone(PChar, PChar->loc.destination);
+    return SendToZone(PChar, PChar->loc.destination);
 }
 
 bool AddWeaponSkillPoints(CCharEntity* PChar, SLOTTYPE slotid, int wspoints)
@@ -7718,7 +7718,7 @@ earth_time::time_point getTraverserEpoch(CCharEntity* PChar)
     const auto rset = db::preparedStmt("SELECT UNIX_TIMESTAMP(traverser_start) AS start FROM char_unlocks WHERE charid = ? LIMIT 1", PChar->id);
     FOR_DB_SINGLE_RESULT(rset)
     {
-        return earth_time::time_point(std::chrono::seconds(rset->get<uint32>("start")));
+        return earth_time::time_point(std::chrono::seconds(rset->getOrDefault<uint32>("start", 0)));
     }
 
     return earth_time::time_point(std::chrono::seconds(0));
@@ -7769,7 +7769,7 @@ uint32 getAvailableTraverserStones(CCharEntity* PChar)
     const auto rset = db::preparedStmt("SELECT UNIX_TIMESTAMP(traverser_start) AS start, traverser_claimed FROM char_unlocks WHERE charid = ? LIMIT 1", PChar->id);
     FOR_DB_SINGLE_RESULT(rset)
     {
-        traverserEpoch   = earth_time::time_point(std::chrono::seconds(rset->get<uint32>("start")));
+        traverserEpoch   = earth_time::time_point(std::chrono::seconds(rset->getOrDefault<uint32>("start", 0)));
         traverserClaimed = rset->get<uint32>("traverser_claimed");
     }
 
@@ -8072,10 +8072,7 @@ void removeCharFromZone(CCharEntity* PChar)
 
     if (PChar->loc.zone != nullptr)
     {
-        if (auto* manager = PChar->loc.zone->nominateManager())
-        {
-            manager->onCharLeavingZone(PChar);
-        }
+        PChar->loc.zone->nominateManager().onCharLeavingZone(PChar);
     }
 
     PChar->WideScanTarget = std::nullopt;
@@ -8091,7 +8088,7 @@ void removeCharFromZone(CCharEntity* PChar)
         PChar->ClearTrusts();
     }
 
-    if (PChar->status == STATUS_TYPE::SHUTDOWN)
+    if (PChar->status == xi::Status::Shutdown)
     {
         if (PChar->PParty != nullptr)
         {
@@ -8143,7 +8140,6 @@ void removeCharFromZone(CCharEntity* PChar)
     {
         PChar->PSession->shuttingDown = 2;
         db::preparedStmt("UPDATE char_stats SET zoning = 1 WHERE charid = ?", PChar->id);
-        charutils::CheckEquipLogic(PChar, SCRIPT_CHANGEZONE, PChar->getZone());
     }
 
     if (PChar->loc.zone != nullptr)
@@ -8159,7 +8155,7 @@ void removeCharFromZone(CCharEntity* PChar)
     charutils::SaveEminenceData(PChar);
     charutils::SaveLastLogout(PChar);
 
-    PChar->status = STATUS_TYPE::DISAPPEAR;
+    PChar->status = xi::Status::Disappear;
 }
 
 void updateSession(MapSession* PSession, CCharEntity* PChar, CZone* currentZone)
@@ -8303,6 +8299,36 @@ void ApplyAbilityRecast(CCharEntity* PChar, const CAbility* PAbility, const Char
     }
 
     PChar->pushPacket<GP_SERV_COMMAND_ABIL_RECAST>(PChar);
+}
+
+void TrackArrowUsageForScavenge(CCharEntity* PChar, CItemWeapon* PAmmo)
+{
+    TracyZoneScoped;
+
+    // Check if local has been set yet
+    if (PChar->GetLocalVar("ArrowsUsed") == 0)
+    {
+        // Local not set yet so set
+        PChar->SetLocalVar("ArrowsUsed", PAmmo->getID() * 10000 + 1);
+    }
+    else
+    {
+        // Local exists now check if arrow used is same as last time
+        if ((floor(PChar->GetLocalVar("ArrowsUsed") / 10000)) == PAmmo->getID())
+        {
+            // Same arrow used as last time now check that arrows used do not go above 1980
+            if (!(floor(PChar->GetLocalVar("ArrowsUsed") % 10000) >= 1980))
+            {
+                // Safe to increment arrows used
+                PChar->SetLocalVar("ArrowsUsed", PChar->GetLocalVar("ArrowsUsed") + 1);
+            }
+        }
+        else
+        {
+            // Different arrow is being used so remake local
+            PChar->SetLocalVar("ArrowsUsed", PAmmo->getID() * 10000 + 1);
+        }
+    }
 }
 
 }; // namespace charutils

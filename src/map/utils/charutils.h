@@ -25,9 +25,7 @@
 
 #include <memory>
 
-#include "entities/charentity.h"
-#include "items/item_equipment.h"
-#include "zone.h"
+#include "entities/char_entity.h"
 
 using Recalculate = xi::Flag<struct RecalculateTag>;
 
@@ -37,8 +35,8 @@ enum class QuestLog : uint8_t;
 enum class KeyItem : uint16_t;
 class CPetEntity;
 class CMobEntity;
-class CMeritPoints;
 class CAbility;
+class CItemWeapon;
 
 /**
  * @enum EMobDifficulty
@@ -99,6 +97,7 @@ EMobDifficulty CheckMob(uint8 charlvl, CBattleEntity* PMob);
 
 uint32 GetBaseExp(uint8 charlvl, int16 moblvl);
 uint32 GetExpNEXTLevel(uint8 charlvl);
+uint8  GetExpLevel(CBattleEntity* PMember);
 
 void DelExperiencePoints(CCharEntity* PChar, float retainpct, uint16 forcedXpLoss);
 void DistributeExperiencePoints(CCharEntity* PChar, CMobEntity* PMob);
@@ -111,6 +110,7 @@ void   AddCapacityPoints(CCharEntity* PChar, CBaseEntity* PMob, uint32 capacityP
 void   DistributeCapacityPoints(CCharEntity* PChar, CMobEntity* PMob);
 
 void  TrySkillUP(CCharEntity* PChar, SKILLTYPE SkillID, uint8 lvl, bool forceSkillUp = false, bool useSubSkill = false);
+void  TrackArrowUsageForScavenge(CCharEntity* PChar, CItemWeapon* PAmmo);
 bool  isArtsBonusActive(CCharEntity* PChar, SKILLTYPE SkillID);
 int16 ArtsBonusSkill(CCharEntity* PChar, SKILLTYPE SkillID);
 void  BuildingCharSkillsTable(CCharEntity* PChar);
@@ -131,7 +131,6 @@ uint8  MoveItem(CCharEntity* PChar, uint8 LocationID, uint8 SlotID, uint8 NewSlo
 uint32 UpdateItem(CCharEntity* PChar, uint8 LocationID, uint8 slotID, int32 quantity, bool force = false);
 void   DropItem(CCharEntity* PChar, uint8 container, uint8 slotID, int32 quantity, uint16 ItemID);
 void   CheckValidEquipment(CCharEntity* PChar);
-void   CheckEquipLogic(CCharEntity* PChar, SCRIPTTYPE ScriptType, uint32 param);
 void   SaveJobChangeGear(CCharEntity* PChar);
 void   LoadJobChangeGear(CCharEntity* PChar);
 void   EquipItem(CCharEntity* PChar, uint8 slotID, uint8 equipSlotID, uint8 containerID);
@@ -255,11 +254,11 @@ void  SetPoints(CCharEntity* PChar, const char* type, int32 amount);
 int32 GetPoints(CCharEntity* PChar, const char* type);
 void  SetUnityLeader(CCharEntity* PChar, uint8 leaderID);
 auto  GetConquestPointsName(CCharEntity* PChar) -> std::string;
-void  SendToZone(CCharEntity* PChar, uint16 zoneId);
+auto  SendToZone(CCharEntity* PChar, uint16 zoneId) -> bool;
 void  SendDisconnect(CCharEntity* PChar);
 void  ForceLogout(CCharEntity* PChar);
 void  ForceRezone(CCharEntity* PChar);
-void  HomePoint(CCharEntity* PChar, bool resetHPMP);
+auto  HomePoint(CCharEntity* PChar, bool resetHPMP) -> bool;
 bool  AddWeaponSkillPoints(CCharEntity*, SLOTTYPE, int);
 
 int32 GetCharVar(CCharEntity* PChar, const std::string& var);

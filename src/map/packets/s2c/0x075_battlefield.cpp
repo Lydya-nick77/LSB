@@ -21,8 +21,6 @@
 
 #include "0x075_battlefield.h"
 
-#include "entities/baseentity.h"
-
 GP_SERV_COMMAND_BATTLEFIELD::GP_SERV_COMMAND_BATTLEFIELD(const uint32 duration, const uint32 warning)
 {
     this->addCountdown(duration, warning);

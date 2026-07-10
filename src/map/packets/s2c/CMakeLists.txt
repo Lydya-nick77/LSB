@@ -162,6 +162,7 @@ set(PACKET_S2C_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/0x065_wpos2.h
     ${CMAKE_CURRENT_SOURCE_DIR}/0x065_wpos2.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/0x069_chocobo_racing.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/0x069_chocobo_racing.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/0x06f_combine_ans.h
     ${CMAKE_CURRENT_SOURCE_DIR}/0x06f_combine_ans.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/0x070_combine_inf.h
@@ -171,6 +172,10 @@ set(PACKET_S2C_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/0x071_influence_campaign.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/0x071_influence_colonization.h
     ${CMAKE_CURRENT_SOURCE_DIR}/0x071_influence_colonization.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/0x073_chocobo_toteboard.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/0x073_chocobo_toteboard.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/0x074_chocobo_list.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/0x074_chocobo_list.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/0x075_battlefield.h
     ${CMAKE_CURRENT_SOURCE_DIR}/0x075_battlefield.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/0x076_group_effects.h

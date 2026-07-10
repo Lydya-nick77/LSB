@@ -1,4 +1,4 @@
-/*
+﻿/*
 ===========================================================================
 
   Copyright (c) 2025 LandSandBoat Dev Teams
@@ -23,10 +23,9 @@
 
 #include "aman.h"
 #include "command_handler.h"
-#include "common/database.h"
 #include "common/ipc_structs.h"
 #include "common/settings.h"
-#include "entities/charentity.h"
+#include "entities/char_entity.h"
 #include "ipc_client.h"
 #include "linkshell.h"
 #include "packets/s2c/0x009_message.h"
@@ -63,9 +62,9 @@ const auto auditUnity = [](Scheduler& scheduler, CCharEntity* PChar, const std::
 {
     if (settings::get<bool>("map.AUDIT_CHAT") && settings::get<uint8>("map.AUDIT_UNITY"))
     {
-        const auto name        = PChar->getName();
-        const auto zoneId      = PChar->getZone();
-        const auto unityLeader = PChar->PUnityChat->getLeader();
+        const auto& name        = PChar->getName();
+        const auto  zoneId      = PChar->getZone();
+        const auto  unityLeader = PChar->PUnityChat->getLeader();
 
         scheduler.postToWorkerThread(
             [name, zoneId, unityLeader, rawMessage]()
@@ -122,7 +121,9 @@ void GP_CLI_COMMAND_CHAT_STD::process(MapSession* PSession, CCharEntity* PChar) 
     if (firstChar == '!' && !jailutils::InPrison(PChar))
     {
         // TODO: Don't pass around Scheduler& through PSession
-        if (CCommandHandler::call(*PSession->scheduler, lua, PChar, rawMessageWithoutFirstChar) == 0 || PChar->m_GMlevel > 0)
+        auto& scheduler = *PSession->scheduler;
+        if (CCommandHandler::call(scheduler, lua, PChar, rawMessageWithoutFirstChar) == CommandResult::Success ||
+            PChar->m_GMlevel > 0)
         {
             // A command was handled OR a GM may have mistyped.
             return;

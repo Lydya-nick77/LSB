@@ -38,7 +38,7 @@ end
 -----------------------------------
 local function enrage(mob)
     -- JP Wiki claims it gains 10 levels https://wiki.ffo.jp/html/8145.html TODO: Verify actual level change with dLVL testing, for now this is 10 levels worth of stats. Damage matches up almost exactly.
-    mob:setMobMod(xi.mobMod.WEAPON_BONUS, 10)
+    mob:setMobMod(xi.mobMod.BASE_DAMAGE_MODIFIER, 10)
     mob:setMod(xi.mod.ATT, 396)
     mob:setMod(xi.mod.ACC, 361)
     mob:setMod(xi.mod.EVA, 334)
@@ -214,7 +214,7 @@ entity.onMobMobskillChoose = function(mob, target, skillId)
         table.insert(skillList, xi.mobSkill.HORRID_ROAR_1)
     end
 
-    return skillList[math.random(1, #skillList)]
+    return skillList[math.randomInt(1, #skillList)]
 end
 
 -----------------------------------

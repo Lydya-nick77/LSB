@@ -21,8 +21,8 @@
 
 #include "0x0dd_equip_inspect.h"
 
-#include "entities/charentity.h"
-#include "entities/mobentity.h"
+#include "entities/char_entity.h"
+#include "entities/mob_entity.h"
 #include "enums/msg_std.h"
 #include "items/item_weapon.h"
 #include "mob_modifier.h"
@@ -78,7 +78,7 @@ void GP_CLI_COMMAND_EQUIP_INSPECT::process(MapSession* PSession, CCharEntity* PC
             if (PMobTarget)
             {
                 // /check on a mob
-                if (PMobTarget->m_Type & MOBTYPE_NOTORIOUS || PMobTarget->m_Type & MOBTYPE_BATTLEFIELD || PMobTarget->getMobMod(MOBMOD_CHECK_AS_NM) > 0)
+                if ((PMobTarget->m_Type & xi::MobType::Notorious) != xi::MobType::Normal || (PMobTarget->m_Type & xi::MobType::Battlefield) != xi::MobType::Normal || PMobTarget->getMobMod(MOBMOD_CHECK_AS_NM) > 0)
                 {
                     PChar->pushPacket<GP_SERV_COMMAND_BATTLE_MESSAGE>(PChar, PMobTarget, 0, 0, MsgBasic::CheckImpossibleToGauge);
                 }

@@ -21,18 +21,17 @@
 
 #include "pathfind.h"
 
+#include <cfloat>
+
 #include "ai/ai_container.h"
 
 #include "common/utils.h"
 
-#include "entities/baseentity.h"
-#include "entities/mobentity.h"
+#include "entities/base_entity.h"
+#include "entities/mob_entity.h"
 
 #include "lua/luautils.h"
 
-#include "map/navmesh/navmesh.h"
-#include "mob_modifier.h"
-#include "status_effect_container.h"
 #include "zone.h"
 
 namespace
@@ -192,6 +191,11 @@ bool CPathFind::WarpTo(const position_t& point, float maxDistance)
 
     LookAt(point);
     m_POwner->updatemask |= UPDATE_POS;
+
+    if (m_POwner->loc.zone != nullptr)
+    {
+        m_POwner->loc.zone->onEntityMoved(m_POwner);
+    }
 
     return true;
 }
@@ -420,6 +424,11 @@ void CPathFind::StepTo(const position_t& pos, bool run)
     m_POwner->loc.p.moving %= 0x2000;
 
     m_POwner->updatemask |= UPDATE_POS;
+
+    if (m_POwner->loc.zone != nullptr)
+    {
+        m_POwner->loc.zone->onEntityMoved(m_POwner);
+    }
 }
 
 bool CPathFind::FindPath(const position_t& start, const position_t& end)

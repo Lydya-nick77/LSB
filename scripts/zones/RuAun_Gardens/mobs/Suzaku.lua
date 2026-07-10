@@ -18,7 +18,7 @@ entity.onMobInitialize = function(mob)
     mob:setMobMod(xi.mobMod.GIL_MIN, 18000)
     mob:setMobMod(xi.mobMod.GIL_MAX, 18000)
     mob:setMobMod(xi.mobMod.MAGIC_COOL, 35)
-    mob:setMobMod(xi.mobMod.WEAPON_BONUS, 30)
+    mob:setMobMod(xi.mobMod.BASE_DAMAGE_MODIFIER, 30)
     mob:setMod(xi.mod.SILENCE_RES_RANK, 11)
     mob:setMod(xi.mod.DEFP, 15)
     mob:setMod(xi.mod.ATTP, 20)
@@ -32,7 +32,7 @@ entity.onMobSpawn = function(mob)
 
     -- Sky gods wait 5-10 seconds after spawning to start casting
     mob:setMagicCastingEnabled(false)
-    mob:timer(math.random(5000, 10000), function(mobArg)
+    mob:timer(math.randomInt(5000, 10000), function(mobArg)
         if mobArg then
             mobArg:setMagicCastingEnabled(true)
         end

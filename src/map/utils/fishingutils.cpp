@@ -21,14 +21,12 @@
 
 #include "fishingutils.h"
 
-#include "common/database.h"
 #include "common/logging.h"
 #include "common/utils.h"
 #include "common/vana_time.h"
 
 #include "packets/char_status.h"
 #include "packets/char_sync.h"
-#include "packets/s2c/0x009_message.h"
 #include "packets/s2c/0x017_chat_std.h"
 #include "packets/s2c/0x01d_item_same.h"
 #include "packets/s2c/0x027_talknumwork2.h"
@@ -41,9 +39,9 @@
 #include "packets/s2c/0x062_clistatus2.h"
 #include "packets/s2c/0x115_fish.h"
 
-#include "entities/battleentity.h"
-#include "entities/mobentity.h"
-#include "entities/npcentity.h"
+#include "entities/battle_entity.h"
+#include "entities/mob_entity.h"
+#include "entities/npc_entity.h"
 
 #include "ai/ai_container.h"
 
@@ -56,7 +54,6 @@
 #include "enums/weather.h"
 #include "item_container.h"
 #include "itemutils.h"
-#include "map_engine.h"
 #include "mob_modifier.h"
 #include "packets/c2s/0x110_fishing_2.h"
 #include "packets/s2c/0x029_battle_message.h"
@@ -333,7 +330,7 @@ uint8 GetLuckyMoonModifier()
 
 auto GetWeatherModifier(const CCharEntity* PChar) -> float
 {
-    const auto weather    = zoneutils::GetZone(PChar->getZone())->GetWeather();
+    const auto weather    = zoneutils::GetZone(PChar->getZone())->weather().current();
     float      weatherMod = 1.0f;
 
     if (weather == Weather::Rain)
@@ -1407,7 +1404,7 @@ bool CanFishMob(CMobEntity* PMob)
         return false;
     }
 
-    if (PMob->status != STATUS_TYPE::DISAPPEAR)
+    if (PMob->status != xi::Status::Disappear)
     {
         return false;
     }
@@ -1615,7 +1612,7 @@ int32 CatchMonster(CCharEntity* PChar, uint32 MobID)
 
     // PMob->SetLocalVar("QuestBattleID", PChar->GetLocalVar("QuestBattleID"));
     // PChar->StatusEffectContainer->CopyConfrontationEffect(PMob);
-    if ((mob->log < 255 && mob->quest < 255) || mob->questOnly || (PMob->m_TrueDetection && PMob->getMobMod(MOBMOD_DETECTION) & DETECT_SCENT) || !PChar->StatusEffectContainer->HasStatusEffect(EFFECT_SNEAK))
+    if ((mob->log < 255 && mob->quest < 255) || mob->questOnly || (PMob->m_TrueDetection && PMob->getMobMod(MOBMOD_DETECTION) & DETECT_SCENT) || !PChar->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::Sneak))
     {
         PMob->PAI->Engage(PChar->targid);
         battleutils::ClaimMob(PMob, (CBattleEntity*)PChar);
@@ -1651,7 +1648,7 @@ int32 CatchChest(CCharEntity* PChar, uint32 NpcID, uint8 distance, int8 angle)
     m.rotation         = p.rotation; // getangle(m, p);
 
     Chest->loc.p  = m;
-    Chest->status = STATUS_TYPE::NORMAL;
+    Chest->status = xi::Status::Normal;
     Chest->SetLocalVar("owner", PChar->id);
     Chest->updatemask |= UPDATE_COMBAT;
     return 1;

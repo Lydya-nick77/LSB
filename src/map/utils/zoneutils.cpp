@@ -27,8 +27,8 @@
 #include "campaign_system.h"
 #include "common/logging.h"
 #include "conquest_system.h"
-#include "entities/mobentity.h"
-#include "entities/npcentity.h"
+#include "entities/mob_entity.h"
+#include "entities/npc_entity.h"
 #include "enums/weather.h"
 #include "items/item_weapon.h"
 #include "itemutils.h"
@@ -46,6 +46,8 @@
 #include <execution>
 #include <future>
 #include <ranges>
+
+#include <fmt/ranges.h>
 
 std::map<uint16, CZone*> g_PZoneList; // Global array of pointers for zones
 
@@ -78,22 +80,16 @@ void TOTDChange(const vanadiel_time::TOTD TOTD)
 void InitializeWeather()
 {
     TracyZoneScoped;
+
     for (const auto PZone : g_PZoneList | std::views::values)
     {
-        if (!PZone->IsWeatherStatic())
+        if (!PZone->weather().isStatic())
         {
             PZone->UpdateWeather();
         }
         else
         {
-            if (!PZone->m_WeatherVector.empty())
-            {
-                PZone->SetWeather(static_cast<Weather>(PZone->m_WeatherVector.at(0).common));
-            }
-            else
-            {
-                PZone->SetWeather(Weather::None); // If not weather data found, initialize with WEATHER_NONE
-            }
+            PZone->SetWeather(PZone->weather().entryForDay(0).common);
         }
     }
     ShowDebug("InitializeWeather Finished");
@@ -267,6 +263,7 @@ auto IsZoneAssignedToThisProcess(const IPP mapIPP, const ZONEID zoneId) -> bool
 auto LoadNPCList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Task<void>
 {
     TracyZoneScoped;
+
     ShowInfo("Loading NPCs");
 
     co_await Scheduler::TaskGroup(
@@ -345,13 +342,13 @@ auto LoadNPCList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Ta
                                     PNpc->animationsub = rset->get<uint8>("animationsub");
 
                                     PNpc->namevis = rset->get<uint8>("namevis");
-                                    PNpc->status  = rset->get<STATUS_TYPE>("status");
+                                    PNpc->status  = rset->get<xi::Status>("status");
                                     PNpc->m_flags = rset->get<uint32>("entityFlags");
 
                                     db::extractFromBlob(rset, "look", PNpc->look);
 
                                     PNpc->name_prefix = rset->get<uint8>("name_prefix");
-                                    PNpc->widescan    = rset->get<uint8>("widescan");
+                                    PNpc->setWidescan(rset->get<uint8>("widescan"));
 
                                     PZone->InsertNPC(PNpc);
                                 }
@@ -393,6 +390,7 @@ auto LoadNPCList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Ta
 auto LoadMOBList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Task<void>
 {
     TracyZoneScoped;
+
     ShowInfo("Loading Mobs");
 
     const auto normalLevelRangeMin = settings::get<uint8>("main.NORMAL_MOB_MAX_LEVEL_RANGE_MIN");
@@ -413,6 +411,7 @@ auto LoadMOBList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Ta
 
                         const auto query = "SELECT mobname, packet_name, mobid, pos_rot, pos_x, pos_y, pos_z, "
                                            "respawntime, spawntype, dropid, mob_groups.HP, mob_groups.MP, mob_spawn_points.minLevel, mob_spawn_points.maxLevel, "
+                                           "mob_spawn_points.spawnHour, mob_spawn_points.despawnHour, "
                                            "modelid, mJob, sJob, cmbSkill, cmbDmgMult, cmbDelay, behavior, links, mobType, immunity, "
                                            "ecosystemID, speed, "
                                            "STR, DEX, VIT, AGI, `INT`, MND, CHR, EVA, DEF, ATT, ACC, "
@@ -470,6 +469,11 @@ auto LoadMOBList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Ta
                                     PMob->m_SpawnType   = rset->get<SPAWNTYPE>("spawntype");
                                     PMob->m_DropID      = rset->get<uint32>("dropid");
 
+                                    if (!rset->isNull("spawnHour") && !rset->isNull("despawnHour"))
+                                    {
+                                        PMob->setSpawnWindow(rset->get<uint8>("spawnHour"), rset->get<uint8>("despawnHour"));
+                                    }
+
                                     // Check if the drop list is valid
                                     if (PMob->m_DropID != 0 && itemutils::GetDropList(PMob->m_DropID) == nullptr)
                                     {
@@ -499,9 +503,9 @@ auto LoadMOBList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Ta
 
                                     PMob->m_Behavior  = rset->get<uint16>("behavior");
                                     PMob->m_Link      = rset->get<uint32>("links");
-                                    PMob->m_Type      = rset->get<MOBTYPE>("mobType");
+                                    PMob->m_Type      = rset->get<xi::MobType>("mobType");
                                     PMob->m_Immunity  = rset->get<uint32>("immunity");
-                                    PMob->m_EcoSystem = rset->get<ECOSYSTEM>("ecosystemID");
+                                    PMob->m_EcoSystem = rset->get<xi::Ecosystem>("ecosystemID");
 
                                     PMob->baseSpeed      = rset->get<uint8>("speed");
                                     PMob->animationSpeed = rset->get<uint8>("speed");
@@ -560,12 +564,12 @@ auto LoadMOBList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Ta
                                     PMob->m_flags       = rset->get<uint32>("entityFlags");
 
                                     // Cap Level if Necessary (Don't Cap NMs)
-                                    if (normalLevelRangeMin > 0 && !(PMob->m_Type & MOBTYPE_NOTORIOUS) && PMob->m_minLevel > normalLevelRangeMin)
+                                    if (normalLevelRangeMin > 0 && !((PMob->m_Type & xi::MobType::Notorious) != xi::MobType::Normal) && PMob->m_minLevel > normalLevelRangeMin)
                                     {
                                         PMob->m_minLevel = normalLevelRangeMin;
                                     }
 
-                                    if (normalLevelRangeMax > 0 && !(PMob->m_Type & MOBTYPE_NOTORIOUS) && PMob->m_maxLevel > normalLevelRangeMax)
+                                    if (normalLevelRangeMax > 0 && !((PMob->m_Type & xi::MobType::Notorious) != xi::MobType::Normal) && PMob->m_maxLevel > normalLevelRangeMax)
                                     {
                                         PMob->m_maxLevel = normalLevelRangeMax;
                                     }
@@ -588,7 +592,7 @@ auto LoadMOBList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Ta
 
                                     PMob->m_Pool = rset->get<uint32>("poolid");
 
-                                    PMob->allegiance      = rset->get<ALLEGIANCE_TYPE>("allegiance");
+                                    PMob->allegiance      = rset->get<xi::Allegiance>("allegiance");
                                     PMob->namevis         = rset->get<uint8>("namevis");
                                     PMob->modelHitboxSize = std::max<float>(0.0f, rset->getOrDefault<float>("modelHitboxSize", 0) / 10.f);
                                     PMob->modelSize       = rset->getOrDefault<uint8>("modelSize", 0);
@@ -608,11 +612,7 @@ auto LoadMOBList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Ta
 
                                     if (slotId > 0)
                                     {
-                                        auto& spawnSlot = PZone->m_spawnSlots[slotId];
-                                        if (!spawnSlot)
-                                        {
-                                            spawnSlot = std::make_unique<SpawnSlot>();
-                                        }
+                                        SpawnSlot* spawnSlot = PZone->spawnHandler().getOrCreateSpawnSlot(slotId);
 
                                         if (PMob->m_SpawnType == SPAWNTYPE_SCRIPTED)
                                         {
@@ -624,10 +624,10 @@ auto LoadMOBList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Ta
 
                                     // Overwrite base family charmables depending on mob type. Disallowed mobs which should be charmable
                                     // can be set in their onInitialize
-                                    if (PMob->m_Type & MOBTYPE_EVENT ||
-                                        PMob->m_Type & MOBTYPE_FISHED ||
-                                        PMob->m_Type & MOBTYPE_BATTLEFIELD ||
-                                        PMob->m_Type & MOBTYPE_NOTORIOUS ||
+                                    if ((PMob->m_Type & xi::MobType::Event) != xi::MobType::Normal ||
+                                        (PMob->m_Type & xi::MobType::Fished) != xi::MobType::Normal ||
+                                        (PMob->m_Type & xi::MobType::Battlefield) != xi::MobType::Normal ||
+                                        (PMob->m_Type & xi::MobType::Notorious) != xi::MobType::Normal ||
                                         zoneType & ZONE_TYPE::DYNAMIS)
                                     {
                                         PMob->setMobMod(MOBMOD_CHARMABLE, 0);
@@ -678,10 +678,11 @@ auto LoadMOBList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Ta
 
                     // Intialize monsters that do not require specific conditions to spawn initially. Monsters conditioned to
                     // spawn by time or weather will be allowed upon corresponding time/weather events.
-                    PMob->m_CanSpawn = PMob->m_SpawnType == SPAWNTYPE_NORMAL ||
-                                       PMob->m_SpawnType == SPAWNTYPE_LOTTERY ||
-                                       PMob->m_SpawnType == SPAWNTYPE_SCRIPTED ||
-                                       PMob->m_SpawnType == SPAWNTYPE_WINDOWED;
+                    PMob->m_CanSpawn = !PMob->spawnWindow().has_value() &&
+                                       (PMob->m_SpawnType == SPAWNTYPE_NORMAL ||
+                                        PMob->m_SpawnType == SPAWNTYPE_LOTTERY ||
+                                        PMob->m_SpawnType == SPAWNTYPE_SCRIPTED ||
+                                        PMob->m_SpawnType == SPAWNTYPE_WINDOWED);
                 });
 
             // Spawn mobs after they've all been initialized. Spawning some mobs will spawn other mobs that may not yet be initialized.
@@ -689,7 +690,7 @@ auto LoadMOBList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Ta
                 [&PZone](CMobEntity* PMob)
                 {
                     // Skip mobs already registered via setRespawnTime in onMobInitialize - let SpawnHandler handle them
-                    if (PZone->spawnHandler()->isRegistered(PMob))
+                    if (PZone->spawnHandler().isRegistered(PMob))
                     {
                         if (PMob->m_SpawnType == SPAWNTYPE_SCRIPTED && PMob->m_RespawnTime > 0s)
                         {
@@ -712,8 +713,9 @@ auto LoadMOBList(Scheduler& scheduler, const std::vector<uint16>& zoneIds) -> Ta
                         }
 
                         // Condition-based mobs (time/weather) register with 0s so they spawn when conditions are met
-                        const bool isConditionBased = PMob->m_SpawnType & (SPAWNTYPE_ATNIGHT | SPAWNTYPE_ATEVENING | SPAWNTYPE_WEATHER | SPAWNTYPE_FOG);
-                        PZone->spawnHandler()->registerForRespawn(PMob, isConditionBased ? std::make_optional(0s) : std::nullopt);
+                        const bool isConditionBased = (PMob->m_SpawnType & (SPAWNTYPE_ATNIGHT | SPAWNTYPE_ATEVENING | SPAWNTYPE_WEATHER | SPAWNTYPE_FOG)) ||
+                                                      PMob->spawnWindow().has_value();
+                        PZone->spawnHandler().registerForRespawn(PMob, isConditionBased ? std::make_optional(0s) : std::nullopt);
                     }
                 });
         });
@@ -860,6 +862,8 @@ auto Initialize(Scheduler& scheduler, MapConfig config) -> Task<void>
     lazyLoad.managedZones = std::set(zones.begin(), zones.end());
 
     luautils::InitInteractionGlobal();
+
+    co_return;
 }
 
 auto ProcessLoadQueue(Scheduler& scheduler, MapConfig config) -> Task<void>
@@ -1299,7 +1303,7 @@ void FreeZoneList()
     g_PZoneList.clear();
 }
 
-void ForEachZone(const std::function<void(CZone*)>& func)
+void ForEachZone(FnRef<void(CZone*)> func)
 {
     for (const auto PZone : g_PZoneList | std::views::values)
     {
@@ -1307,7 +1311,7 @@ void ForEachZone(const std::function<void(CZone*)>& func)
     }
 }
 
-void ForEachZone(const std::vector<uint16>& zoneIds, const std::function<void(CZone*)>& func)
+void ForEachZone(const std::vector<uint16>& zoneIds, FnRef<void(CZone*)> func)
 {
     for (auto zoneId : zoneIds)
     {
@@ -1340,6 +1344,40 @@ auto GetZoneIPP(uint16 zoneId) -> uint64
     return ipp;
 }
 
+auto IsZoneAtPlayerCap(uint16 zoneId, bool isGM) -> bool
+{
+    const auto cap = settings::get<uint16>("map.ZONE_PLAYER_CAP");
+    if (cap == 0)
+    {
+        return false;
+    }
+
+    const auto reserved  = settings::get<uint16>("map.ZONE_PLAYER_GM_RESERVED");
+    const auto threshold = isGM ? cap : static_cast<uint16>(cap > reserved ? cap - reserved : 0);
+
+    const auto rset = db::preparedStmt(
+        "SELECT z.zonetype, "
+        "  (SELECT COUNT(*) FROM accounts_sessions s "
+        "    JOIN chars c ON c.charid = s.charid "
+        "    WHERE c.pos_zone = ?) AS pop "
+        "FROM zone_settings z WHERE z.zoneid = ? LIMIT 1",
+        zoneId,
+        zoneId);
+
+    FOR_DB_SINGLE_RESULT(rset)
+    {
+        const auto zoneType = rset->get<uint16>("zonetype");
+        if (zoneType & ZONE_TYPE::INSTANCED)
+        {
+            return false;
+        }
+
+        return rset->get<uint32>("pop") >= threshold;
+    }
+
+    return false;
+}
+
 /************************************************************************
  *                                                                       *
  *  Check whether or not the zone is a residential area                  *
@@ -1359,7 +1397,9 @@ void AfterZoneIn(CBaseEntity* PEntity)
         return;
     }
 
-    if (!PChar->PBattlefield || !PChar->PBattlefield->isEntered(PChar))
+    const bool inBattlefield    = PChar->PBattlefield && PChar->PBattlefield->isEntered(PChar);
+    const bool inCappedInstance = PChar->PInstance && PChar->PInstance->GetLevelCap() > 0;
+    if (!inBattlefield && !inCappedInstance)
     {
         GetZone(PChar->getZone())->updateCharLevelRestriction(PChar);
     }

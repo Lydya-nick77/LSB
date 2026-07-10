@@ -20,9 +20,8 @@
 */
 
 #include "despawn_state.h"
-#include "ai/ai_container.h"
-#include "entities/baseentity.h"
-#include "entities/mobentity.h"
+#include "entities/base_entity.h"
+#include "entities/mob_entity.h"
 #include "enums/four_cc.h"
 #include "packets/s2c/0x038_schedulor.h"
 #include "spawn_handler.h"
@@ -32,14 +31,14 @@ CDespawnState::CDespawnState(CBaseEntity* _PEntity, bool instantDespawn)
 : CState(_PEntity, _PEntity->targid)
 , despawnTime_(timer::now() + (instantDespawn ? 0s : 3s))
 {
-    if (!instantDespawn && (_PEntity->status != STATUS_TYPE::DISAPPEAR && !(static_cast<CMobEntity*>(_PEntity)->m_Behavior & BEHAVIOR_NO_DESPAWN)))
+    if (!instantDespawn && (_PEntity->status != xi::Status::Disappear && !(static_cast<CMobEntity*>(_PEntity)->m_Behavior & BEHAVIOR_NO_DESPAWN)))
     {
         _PEntity->loc.zone->PushPacket(_PEntity, CHAR_INRANGE, std::make_unique<GP_SERV_COMMAND_SCHEDULOR>(_PEntity, _PEntity, FourCC::FadeOut));
     }
 
     if (auto* PMob = dynamic_cast<CMobEntity*>(_PEntity); PMob && PMob->m_AllowRespawn && PMob->loc.zone != nullptr)
     {
-        PMob->loc.zone->spawnHandler()->registerForRespawn(PMob);
+        PMob->loc.zone->spawnHandler().registerForRespawn(PMob);
     }
 }
 

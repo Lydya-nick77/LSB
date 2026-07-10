@@ -21,11 +21,14 @@
 
 #pragma once
 
+#include "common/cbasetypes.h"
+
+#include <common/types/hash_map.h>
+
 #include "ai/ai_container.h"
 #include "ai/controllers/trust_controller.h"
-#include "common/cbasetypes.h"
-#include "entities/charentity.h"
-#include "entities/trustentity.h"
+#include "entities/char_entity.h"
+#include "entities/trust_entity.h"
 #include "mob_spell_container.h"
 #include "status_effect.h"
 #include "status_effect_container.h"
@@ -292,6 +295,7 @@ public:
     : POwner(trust)
     {
     }
+
     ~CGambitsContainer() = default;
 
     auto NewGambitIdentifier(const Gambit_t& gambit) const -> std::string;
@@ -307,7 +311,7 @@ public:
     uint16                    tp_value;
 
 private:
-    bool CheckTrigger(const CBattleEntity* triggerTarget, const Gambit_t& gambit, size_t predicateGroupIndex, PredicateGroup_t& predicateGroup);
+    auto CheckTrigger(const CBattleEntity* triggerTarget, const Gambit_t& gambit, size_t predicateGroupIndex, PredicateGroup_t& predicateGroup) -> bool;
     bool TryTrustSkill();
     bool PartyHasHealer();
     bool PartyHasTank();
@@ -316,7 +320,7 @@ private:
     timer::time_point     m_lastAction;
     std::vector<Gambit_t> gambits;
 
-    std::unordered_map<std::string, timer::time_point> m_timerConditionLastTrigger;
+    HashMap<std::string, timer::time_point> m_timerConditionLastTrigger;
 
     std::set<JOBTYPE> melee_jobs = {
         JOB_WAR,

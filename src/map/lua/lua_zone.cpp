@@ -24,16 +24,10 @@
 #include "common/logging.h"
 #include "common/timer.h"
 
-#include "entities/charentity.h"
-#include "entities/npcentity.h"
-#include "lua_baseentity.h"
-#include "map/navmesh/navmesh.h"
+#include "entities/npc_entity.h"
+#include "lua_base_entity.h"
 #include "trigger_area.h"
-#include "utils/mobutils.h"
 #include "zone.h"
-#include "zone_entities.h"
-
-#include <map/ximesh/ximesh.h>
 
 CLuaZone::CLuaZone(CZone* PZone)
 : m_pLuaZone(PZone)
@@ -80,7 +74,7 @@ auto CLuaZone::getLocalVars() -> sol::table
 /************************************************************************
  *  Function: setLocalVar()
  *  Purpose : Assigns a local variable to a zone
- *  Example : zone:setLocalVar("pop", GetSystemTime() + math.random(1200,7200));
+ *  Example : zone:setLocalVar("pop", GetSystemTime() + math.randomInt(1200, 7200));
  *  Notes   :
  ************************************************************************/
 
@@ -188,16 +182,16 @@ ZONE_TYPE CLuaZone::getTypeMask()
 
 auto CLuaZone::getBattlefieldByInitiator(uint32 charID) -> CBattlefield*
 {
-    if (m_pLuaZone->m_BattlefieldHandler)
+    if (m_pLuaZone->battlefieldHandler())
     {
-        return m_pLuaZone->m_BattlefieldHandler->GetBattlefieldByInitiator(charID);
+        return m_pLuaZone->battlefieldHandler()->GetBattlefieldByInitiator(charID);
     }
     return nullptr;
 }
 
 auto CLuaZone::getWeather() const -> Weather
 {
-    return m_pLuaZone->GetWeather();
+    return m_pLuaZone->weather().current();
 }
 
 uint32 CLuaZone::getUptime()
